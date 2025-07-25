@@ -113,4 +113,44 @@ export async function deleteGroupExpense(groupId, expenseId) {
   });
   if (!res.ok) throw new Error('Error al eliminar gasto del grupo');
   return await res.json();
+}
+
+export async function updateGroupExpense(groupId, expenseId, expense) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/${groupId}/expenses/${expenseId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(expense),
+  });
+  if (!res.ok) throw new Error('Error al actualizar gasto');
+  return await res.json();
+}
+
+export async function updateMemberRole(groupId, userId, role) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/${groupId}/members/${userId}/role`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) throw new Error('Error al cambiar el rol');
+  return await res.json();
+}
+
+export async function deleteGroup(groupId) {
+  const token = getToken();
+  const res = await fetch(`${API_URL}/${groupId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Error al eliminar grupo');
+  return await res.json();
 } 

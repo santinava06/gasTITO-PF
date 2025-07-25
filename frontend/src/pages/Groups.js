@@ -18,18 +18,19 @@ import {
   IconButton,
   Chip,
   Box,
-  Snackbar,
-  Alert,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Avatar
 } from '@mui/material';
 import {
   Add as AddIcon,
   People as PeopleIcon,
   Email as EmailIcon,
   Delete as DeleteIcon,
-  Group as GroupIcon
+  Group as GroupIcon,
+  ArrowForward as ArrowForwardIcon,
+  InfoOutlined as InfoIcon
 } from '@mui/icons-material';
 import {
   createGroup,
@@ -37,8 +38,13 @@ import {
   getGroupDetails,
   inviteToGroup,
   getPendingInvitations,
-  acceptInvitation
+  acceptInvitation,
+  getGroupExpenses,
+  deleteGroup
 } from '../services/groups';
+import { useSnackbar } from '../context/SnackbarContext';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
+import { useAuth } from '../context/AuthContext';
 
 function Groups() {
   const navigate = useNavigate();
@@ -48,12 +54,14 @@ function Groups() {
   const [inviteDialog, setInviteDialog] = useState({ open: false, groupId: null });
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [groupDetails, setGroupDetails] = useState(null);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
-
   const [newGroup, setNewGroup] = useState({ name: '', description: '' });
   const [inviteEmail, setInviteEmail] = useState('');
+  const { showSuccess, showError } = useSnackbar();
+  const COLORS = ['#22336c', '#43a047', '#fbc02d', '#e57373', '#6b7280', '#8e24aa', '#00838f'];
+  const [expensesByMember, setExpensesByMember] = useState([]);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadData();
@@ -68,7 +76,7 @@ function Groups() {
       setGroups(groupsData);
       setInvitations(invitationsData);
     } catch (error) {
-      setError('Error al cargar datos');
+      showError('Error al cargar datos');
     } finally {
       setLoading(false);
     }
@@ -80,9 +88,9 @@ function Groups() {
       setGroups([group, ...groups]);
       setCreateDialog(false);
       setNewGroup({ name: '', description: '' });
-      setSuccess('Grupo creado exitosamente');
+      showSuccess('Grupo creado exitosamente');
     } catch (error) {
-      setError('Error al crear grupo');
+      showError('Error al crear grupo');
     }
   };
 
@@ -91,73 +99,119 @@ function Groups() {
       await inviteToGroup(inviteDialog.groupId, inviteEmail);
       setInviteDialog({ open: false, groupId: null });
       setInviteEmail('');
-      setSuccess('Invitación enviada exitosamente');
+      showSuccess('Invitación enviada exitosamente');
     } catch (error) {
-      setError('Error al enviar invitación');
+      showError('Error al enviar invitación');
     }
   };
 
   const handleAcceptInvitation = async (token) => {
     try {
       await acceptInvitation(token);
-      await loadData(); // Recargar datos
-      setSuccess('Te has unido al grupo exitosamente');
+      await loadData();
+      showSuccess('Te has unido al grupo exitosamente');
     } catch (error) {
-      setError('Error al aceptar invitación');
+      showError('Error al aceptar invitación');
     }
   };
 
   const handleViewGroupDetails = async (groupId) => {
     try {
+      setLoadingExpenses(true);
       const details = await getGroupDetails(groupId);
       setGroupDetails(details);
       setSelectedGroup(groupId);
+      // Obtener gastos del grupo y calcular por miembro
+      const gastos = await getGroupExpenses(groupId);
+      const byMember = {};
+      gastos.forEach(g => {
+        if (!byMember[g.paid_by_email]) byMember[g.paid_by_email] = 0;
+        byMember[g.paid_by_email] += Number(g.monto);
+      });
+      setExpensesByMember(Object.entries(byMember).map(([email, monto]) => ({ email, monto })));
     } catch (error) {
-      setError('Error al cargar detalles del grupo');
+      showError('Error al cargar detalles del grupo');
+    } finally {
+      setLoadingExpenses(false);
     }
   };
 
-  const GroupCard = ({ group }) => (
-    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Box display="flex" alignItems="center" gap={1} mb={2}>
-          <GroupIcon color="primary" />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {group.name}
-          </Typography>
-          {group.user_role === 'admin' && (
-            <Chip label="Admin" color="primary" size="small" />
-          )}
-        </Box>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {group.description || 'Sin descripción'}
-        </Typography>
-        
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            {group.member_count} miembros
-          </Typography>
-          <Box display="flex" gap={1}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleViewGroupDetails(group.id)}
-            >
-              Ver detalles
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => navigate(`/groups/${group.id}/expenses`)}
-            >
-              Ver gastos
-            </Button>
+  const handleDeleteGroup = async (groupId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este grupo? Esta acción no se puede deshacer.')) return;
+    try {
+      await deleteGroup(groupId);
+      setGroups(groups.filter(g => g.id !== groupId));
+      showSuccess('Grupo eliminado');
+    } catch {
+      showError('No se pudo eliminar el grupo');
+    }
+  };
+
+  const GroupCard = ({ group }) => {
+    const [totalGastos, setTotalGastos] = React.useState(null);
+    React.useEffect(() => {
+      let mounted = true;
+      getGroupExpenses(group.id)
+        .then(gastos => {
+          if (mounted) {
+            const total = gastos.reduce((acc, g) => acc + Number(g.monto), 0);
+            setTotalGastos(total);
+          }
+        })
+        .catch(() => setTotalGastos(null));
+      return () => { mounted = false; };
+    }, [group.id]);
+
+    return (
+      <Paper
+        sx={{ height: '100%', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 6, bgcolor: '#f4f6fa' } }}
+        elevation={3}
+        onClick={() => navigate(`/groups/${group.id}/expenses`)}
+        tabIndex={0}
+        role="button"
+        aria-label={`Ver grupo ${group.name}`}
+      >
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <GroupIcon color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {group.name}
+            </Typography>
+            {group.user_role === 'owner' && (
+              <Chip label="Propietario" color="warning" size="small" />
+            )}
+            {group.user_role === 'admin' && (
+              <Chip label="Admin" color="primary" size="small" />
+            )}
+            {(group.user_role === 'owner' || group.user_role === 'admin') && (
+              <IconButton
+                size="small"
+                color="error"
+                sx={{ ml: 1 }}
+                onClick={e => { e.stopPropagation(); handleDeleteGroup(group.id); }}
+                title="Eliminar grupo"
+              >
+                <DeleteIcon />
+              </IconButton>
+            )}
           </Box>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {group.description || 'Sin descripción'}
+          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                Miembros: <b>{group.member_count}</b>
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Total gastos: <b>{totalGastos === null ? '...' : `$${totalGastos}`}</b>
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Paper>
+    );
+  };
 
   const InvitationCard = ({ invitation }) => (
     <Card sx={{ mb: 2 }}>
@@ -300,81 +354,7 @@ function Groups() {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog detalles del grupo */}
-      <Dialog 
-        open={!!groupDetails} 
-        onClose={() => setGroupDetails(null)} 
-        maxWidth="md" 
-        fullWidth
-      >
-        {groupDetails && (
-          <>
-            <DialogTitle>
-              <Box display="flex" alignItems="center" gap={1}>
-                <GroupIcon />
-                {groupDetails.name}
-              </Box>
-            </DialogTitle>
-            <DialogContent>
-              <Typography variant="body1" sx={{ mb: 3 }}>
-                {groupDetails.description || 'Sin descripción'}
-              </Typography>
-              
-              <Typography variant="h6" gutterBottom>
-                Miembros ({groupDetails.members?.length || 0})
-              </Typography>
-              
-              <List>
-                {groupDetails.members?.map((member) => (
-                  <ListItem key={member.id}>
-                    <ListItemText
-                      primary={member.email}
-                      secondary={`${member.role} - Unido: ${new Date(member.joined_at).toLocaleDateString()}`}
-                    />
-                    <ListItemSecondaryAction>
-                      <Chip 
-                        label={member.role} 
-                        color={member.role === 'admin' ? 'primary' : 'default'}
-                        size="small"
-                      />
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                ))}
-              </List>
-
-              {groupDetails.user_role === 'admin' && (
-                <Box mt={3}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<EmailIcon />}
-                    onClick={() => {
-                      setInviteDialog({ open: true, groupId: groupDetails.id });
-                      setGroupDetails(null);
-                    }}
-                  >
-                    Invitar Miembro
-                  </Button>
-                </Box>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setGroupDetails(null)}>Cerrar</Button>
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
-
-      {/* Snackbars */}
-      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess('')}>
-        <Alert severity="success" sx={{ width: '100%' }}>
-          {success}
-        </Alert>
-      </Snackbar>
-      <Snackbar open={!!error} autoHideDuration={4000} onClose={() => setError('')}>
-        <Alert severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
+      {/* Eliminar el modal de detalles del grupo y toda la lógica asociada. */}
     </Container>
   );
 }

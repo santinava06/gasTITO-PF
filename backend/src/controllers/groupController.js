@@ -18,9 +18,9 @@ export const createGroup = (req, res) => {
       
       const groupId = this.lastID;
       
-      // Agregar al creador como miembro del grupo
+      // Agregar al creador como miembro del grupo con rol owner
       db.run('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)', 
-        [groupId, userId, 'admin'], (err) => {
+        [groupId, userId, 'owner'], (err) => {
           if (err) return res.status(500).json({ error: err.message });
           
           res.status(201).json({ 
@@ -110,12 +110,12 @@ export const inviteToGroup = (req, res) => {
     return res.status(400).json({ error: 'Email es requerido' });
   }
 
-  // Verificar que el usuario sea admin del grupo
+  // Verificar que el usuario sea admin o owner del grupo
   db.get('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?', 
     [groupId, userId], (err, membership) => {
       if (err) return res.status(500).json({ error: err.message });
-      if (!membership || membership.role !== 'admin') {
-        return res.status(403).json({ error: 'Solo los administradores pueden invitar miembros' });
+      if (!membership || !['admin', 'owner'].includes(membership.role)) {
+        return res.status(403).json({ error: 'Solo los administradores o el propietario pueden invitar miembros' });
       }
 
       // Verificar que el email no esté ya invitado
@@ -305,6 +305,111 @@ export const deleteGroupExpense = (req, res) => {
     }
 
     db.run('DELETE FROM group_expenses WHERE id = ?', [expenseId], function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    });
+  });
+}; 
+
+// Actualizar un gasto de grupo
+export const updateGroupExpense = (req, res) => {
+  const { groupId, expenseId } = req.params;
+  const { monto, categoria, descripcion, fecha } = req.body;
+  const userId = req.user.id;
+
+  // Solo owner o admin pueden editar
+  db.get('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, userId], (err, membership) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      return res.status(403).json({ error: 'No tienes permisos para editar este gasto' });
+    }
+    db.run(
+      'UPDATE group_expenses SET monto = ?, categoria = ?, descripcion = ?, fecha = ? WHERE id = ? AND group_id = ?',
+      [monto, categoria, descripcion || '', fecha, expenseId, groupId],
+      function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        db.get('SELECT * FROM group_expenses WHERE id = ?', [expenseId], (err, updated) => {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json(updated);
+        });
+      }
+    );
+  });
+};
+
+// Cambiar el rol de un miembro del grupo (ahora soporta 'owner')
+export const updateMemberRole = (req, res) => {
+  const { groupId, userId } = req.params;
+  const { role } = req.body;
+  const adminId = req.user.id;
+
+  if (!['admin', 'member', 'owner'].includes(role)) {
+    return res.status(400).json({ error: 'Rol no válido' });
+  }
+
+  // Verificar el rol actual del solicitante
+  db.get('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, adminId], (err, membership) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!membership) return res.status(403).json({ error: 'No tienes permisos' });
+
+    // Solo el owner puede transferir la propiedad
+    if (role === 'owner') {
+      if (membership.role !== 'owner') {
+        return res.status(403).json({ error: 'Solo el propietario puede transferir la propiedad' });
+      }
+      // No permitir que el owner se quite a sí mismo el rol si es el único owner
+      if (parseInt(userId) === adminId) {
+        return res.status(400).json({ error: 'No puedes quitarte el rol de propietario a ti mismo' });
+      }
+      // Transferir la propiedad: poner al nuevo owner y bajar el actual a admin
+      db.serialize(() => {
+        db.run('UPDATE group_members SET role = "admin" WHERE group_id = ? AND user_id = ?', [groupId, adminId], function (err) {
+          if (err) return res.status(500).json({ error: err.message });
+          db.run('UPDATE group_members SET role = "owner" WHERE group_id = ? AND user_id = ?', [groupId, userId], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true, userId, role: 'owner' });
+          });
+        });
+      });
+      return;
+    }
+
+    // Solo admin u owner pueden cambiar otros roles
+    if (!['admin', 'owner'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Solo los administradores o el propietario pueden cambiar roles' });
+    }
+    // No permitir que un admin se quite a sí mismo el rol si es el único admin
+    if (parseInt(userId) === adminId && role !== 'admin') {
+      db.get('SELECT COUNT(*) as adminCount FROM group_members WHERE group_id = ? AND role = "admin"', [groupId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row.adminCount <= 1) {
+          return res.status(400).json({ error: 'Debe haber al menos un administrador en el grupo' });
+        }
+        updateRole();
+      });
+    } else {
+      updateRole();
+    }
+    function updateRole() {
+      db.run('UPDATE group_members SET role = ? WHERE group_id = ? AND user_id = ?', [role, groupId, userId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, userId, role });
+      });
+    }
+  });
+}; 
+
+// Eliminar un grupo
+export const deleteGroup = (req, res) => {
+  const { groupId } = req.params;
+  const userId = req.user.id;
+  // Solo owner o admin pueden eliminar
+  db.get('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, userId], (err, membership) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+      return res.status(403).json({ error: 'No tienes permisos para eliminar este grupo' });
+    }
+    db.run('DELETE FROM expense_groups WHERE id = ?', [groupId], function (err) {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true });
     });

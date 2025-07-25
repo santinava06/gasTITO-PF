@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { TextField, Button, Paper, Typography, Box, Alert } from '@mui/material';
+import { TextField, Button, Paper, Typography, Box } from '@mui/material';
 import { register as registerService, saveAuth } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { useSnackbar } from '../context/SnackbarContext';
 
 function Register() {
   const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { showError } = useSnackbar();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -16,14 +17,13 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     try {
       const data = await registerService(form.email, form.password);
       saveAuth(data);
       login(data.user, data.token);
       navigate('/');
     } catch {
-      setError('No se pudo registrar. ¿El email ya existe?');
+      showError('No se pudo registrar. ¿El email ya existe?');
     }
   };
 
@@ -31,7 +31,6 @@ function Register() {
     <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
       <Paper elevation={3} sx={{ p: 4, minWidth: 320 }}>
         <Typography variant="h5" gutterBottom>Registrarse</Typography>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <form onSubmit={handleSubmit}>
           <TextField
             label="Email"

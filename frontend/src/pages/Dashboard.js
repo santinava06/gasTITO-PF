@@ -1,38 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Grid, Paper, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
+import { Container, Typography, Grid, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import ExpenseForm from '../components/ExpenseForm';
 import ExpenseTable from '../components/ExpenseTable';
 import { fetchExpenses, addExpense, deleteExpense, updateExpense } from '../services/expenses';
+import { useSnackbar } from '../context/SnackbarContext';
 
 function Dashboard() {
   const [open, setOpen] = useState(false);
   const [gastos, setGastos] = useState([]);
-  const [error, setError] = useState('');
   const [editDialog, setEditDialog] = useState(false);
   const [gastoEdit, setGastoEdit] = useState(null);
+  const { showSuccess, showError } = useSnackbar();
 
   useEffect(() => {
     fetchExpenses()
       .then(setGastos)
-      .catch(() => setError('Error al cargar gastos'));
-  }, []);
+      .catch(() => showError('Error al cargar gastos'));
+  }, [showError]);
 
   const handleAddExpense = async (data) => {
     try {
       const nuevo = await addExpense(data);
       setGastos([nuevo, ...gastos]);
-      setOpen(true);
+      showSuccess('Gasto agregado correctamente');
     } catch {
-      setError('Error al agregar gasto');
+      showError('Error al agregar gasto');
     }
   };
 
   const handleDeleteExpense = async (gasto) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este gasto?')) return;
     try {
       await deleteExpense(gasto.id);
       setGastos(gastos.filter(g => g.id !== gasto.id));
+      showSuccess('Gasto eliminado correctamente');
     } catch {
-      setError('Error al eliminar gasto');
+      showError('Error al eliminar gasto');
     }
   };
 
@@ -47,8 +50,9 @@ function Dashboard() {
       setGastos(gastos.map(g => g.id === gastoEdit.id ? actualizado : g));
       setEditDialog(false);
       setGastoEdit(null);
+      showSuccess('Gasto actualizado correctamente');
     } catch {
-      setError('Error al actualizar gasto');
+      showError('Error al actualizar gasto');
     }
   };
 
@@ -58,7 +62,7 @@ function Dashboard() {
         Dashboard
       </Typography>
       <Typography variant="subtitle1" gutterBottom>
-        Bienvenido/a al panel de finanzas familiares.
+        Bienvenido/a a tu panel de control
       </Typography>
       <ExpenseForm onSubmit={handleAddExpense} />
       <Grid container spacing={3} sx={{ mt: 2 }}>
@@ -69,23 +73,9 @@ function Dashboard() {
           </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Paper elevation={3} sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6">Miembros del grupo</Typography>
-            <Typography variant="h5">0</Typography>
-          </Paper>
         </Grid>
       </Grid>
       <ExpenseTable gastos={gastos} onEdit={handleEditExpense} onDelete={handleDeleteExpense} />
-      <Snackbar open={open} autoHideDuration={2000} onClose={() => setOpen(false)}>
-        <Alert severity="success" sx={{ width: '100%' }}>
-          Gasto agregado correctamente
-        </Alert>
-      </Snackbar>
-      <Snackbar open={!!error} autoHideDuration={3000} onClose={() => setError('')}>
-        <Alert severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
       <Dialog open={editDialog} onClose={() => setEditDialog(false)}>
         <DialogTitle>Editar gasto</DialogTitle>
         <DialogContent>
