@@ -4,7 +4,7 @@
     "private": true,
     "scripts": {
       "heroku-postbuild": "cd frontend && npm install && npm run build",
-      "build": "cd frontend && npm install && npm run build",
+      "build": "cd frontend && CI='' npm run build",
       "start": "cd backend && npm install && npm start"
     }
   }
