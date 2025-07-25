@@ -1,6 +1,6 @@
 import { getToken } from './auth';
 
-const API_URL = 'http://localhost:3001/api/groups';
+const API_URL = (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/groups') : 'http://localhost:3001/api/groups');
 
 // Funciones para grupos
 export async function createGroup(groupData) {

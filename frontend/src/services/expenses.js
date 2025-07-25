@@ -1,6 +1,6 @@
 import { getToken } from './auth';
 
-const API_URL = 'http://localhost:3001/api/expenses';
+const API_URL = (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/expenses') : 'http://localhost:3001/api/expenses');
 
 export async function fetchExpenses() {
   const token = getToken();
