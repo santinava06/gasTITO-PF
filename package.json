@@ -1,0 +1,10 @@
+{
+    "name": "finanzas-familiares-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+      "heroku-postbuild": "cd frontend && npm install && npm run build",
+      "build": "cd frontend && npm install && npm run build",
+      "start": "cd backend && npm install && npm start"
+    }
+  }
