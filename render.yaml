@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: gasTITO-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        value: https://gas-tito-pf.vercel.app
+      - key: JWT_SECRET
+        generateValue: true 

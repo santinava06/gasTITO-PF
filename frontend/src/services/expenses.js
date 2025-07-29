@@ -1,6 +1,6 @@
 import { getToken } from './auth';
 
-const API_URL = (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/expenses') : 'http://localhost:3001/api/expenses');
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Función para manejar errores de autenticación
 const handleAuthError = (response) => {
@@ -20,7 +20,7 @@ export async function fetchExpenses() {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(API_URL, {
+  const res = await fetch(`${API_URL}/expenses`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ export async function addExpense(expense) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(API_URL, {
+  const res = await fetch(`${API_URL}/expenses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ export async function deleteExpense(id) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(`${API_URL}/${id}`, {
+  const res = await fetch(`${API_URL}/expenses/${id}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -83,7 +83,7 @@ export async function updateExpense(id, expense) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(`${API_URL}/${id}`, {
+  const res = await fetch(`${API_URL}/expenses/${id}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ export async function getMembers(expenseId) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(`${API_URL}/${expenseId}/members`, {
+  const res = await fetch(`${API_URL}/expenses/${expenseId}/members`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -126,7 +126,7 @@ export async function addMember(expenseId, email) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(`${API_URL}/${expenseId}/members`, {
+  const res = await fetch(`${API_URL}/expenses/${expenseId}/members`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ export async function removeMember(expenseId, memberId) {
     throw new Error('No hay token de autenticación');
   }
 
-  const res = await fetch(`${API_URL}/${expenseId}/members/${memberId}`, {
+  const res = await fetch(`${API_URL}/expenses/${expenseId}/members/${memberId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,

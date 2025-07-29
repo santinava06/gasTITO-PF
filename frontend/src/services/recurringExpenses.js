@@ -1,64 +1,140 @@
 import { getToken } from './auth';
 
-const API_URL = process.env.REACT_APP_API_URL
-  ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/recurring-expenses')
-  : 'http://localhost:3001/api/recurring-expenses';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
-export async function getRecurringExpenses(groupId) {
+// Función para manejar errores de autenticación
+const handleAuthError = (response) => {
+  if (response.status === 401 || response.status === 403) {
+    // Token expirado o inválido, redirigir al login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+  }
+  throw new Error('Error en la solicitud');
+};
+
+export const getRecurringExpenses = async (groupId) => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/${groupId}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses/${groupId}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
   });
-  if (!res.ok) throw new Error('Error al obtener gastos recurrentes');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};
 
-export async function getAllRecurringExpenses() {
+export const getAllRecurringExpenses = async () => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/all`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses/all`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
   });
-  if (!res.ok) throw new Error('Error al obtener todos los gastos recurrentes');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};
 
-export async function createRecurringExpense(data) {
+export const createRecurringExpense = async (recurringExpenseData) => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/`, {
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify(data)
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(recurringExpenseData),
   });
-  if (!res.ok) throw new Error('Error al crear gasto recurrente');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};
 
-export async function pauseRecurringExpense(id) {
+export const pauseRecurringExpense = async (id) => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/${id}/pause`, {
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses/${id}/pause`, {
     method: 'PATCH',
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
   });
-  if (!res.ok) throw new Error('Error al pausar gasto recurrente');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};
 
-export async function resumeRecurringExpense(id) {
+export const resumeRecurringExpense = async (id) => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/${id}/resume`, {
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses/${id}/resume`, {
     method: 'PATCH',
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
   });
-  if (!res.ok) throw new Error('Error al reanudar gasto recurrente');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};
 
-export async function deleteRecurringExpense(id) {
+export const deleteRecurringExpense = async (id) => {
   const token = getToken();
-  const res = await fetch(`${API_URL}/${id}`, {
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/recurring-expenses/${id}`, {
     method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
   });
-  if (!res.ok) throw new Error('Error al eliminar gasto recurrente');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
-}
+};

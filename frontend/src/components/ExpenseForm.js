@@ -68,11 +68,26 @@ function ExpenseForm({ onSubmit, initialData }) {
 
   useEffect(() => {
     if (initialData) {
+      let fechaValue = new Date();
+      
+      if (initialData.fecha) {
+        try {
+          const parsedDate = parseISO(initialData.fecha);
+          // Verificar que la fecha sea válida
+          if (!isNaN(parsedDate.getTime())) {
+            fechaValue = parsedDate;
+          }
+        } catch (error) {
+          console.warn('Error parsing date:', error);
+          fechaValue = new Date();
+        }
+      }
+      
       setForm({
         monto: initialData.monto || '',
         categoria: initialData.categoria || '',
         descripcion: initialData.descripcion || '',
-        fecha: initialData.fecha ? parseISO(initialData.fecha) : new Date(),
+        fecha: fechaValue,
       });
     }
   }, [initialData]);
@@ -98,6 +113,7 @@ function ExpenseForm({ onSubmit, initialData }) {
       case 'fecha':
         if (!value) return 'La fecha es requerida';
         const selectedDate = new Date(value);
+        if (isNaN(selectedDate.getTime())) return 'Fecha inválida';
         const today = new Date();
         if (selectedDate > today) return 'La fecha no puede ser futura';
         return '';
@@ -125,10 +141,13 @@ function ExpenseForm({ onSubmit, initialData }) {
   };
 
   const handleDateChange = (date) => {
-    setForm(prev => ({ ...prev, fecha: date }));
-    if (touched.fecha) {
-      const error = validateField('fecha', date);
-      setErrors(prev => ({ ...prev, fecha: error }));
+    // Verificar que la fecha sea válida antes de actualizar el estado
+    if (date && !isNaN(date.getTime())) {
+      setForm(prev => ({ ...prev, fecha: date }));
+      if (touched.fecha) {
+        const error = validateField('fecha', date);
+        setErrors(prev => ({ ...prev, fecha: error }));
+      }
     }
   };
 
@@ -179,9 +198,12 @@ function ExpenseForm({ onSubmit, initialData }) {
     });
 
     if (Object.keys(newErrors).length === 0) {
+      // Asegurar que la fecha sea válida antes de formatear
+      const fechaValida = form.fecha && !isNaN(form.fecha.getTime()) ? form.fecha : new Date();
+      
       const formData = {
         ...form,
-        fecha: format(form.fecha, 'yyyy-MM-dd')
+        fecha: format(fechaValida, 'yyyy-MM-dd')
       };
       
       if (onSubmit) onSubmit(formData);
@@ -327,7 +349,7 @@ function ExpenseForm({ onSubmit, initialData }) {
               <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
                 <DatePicker
                   label="Fecha"
-                  value={form.fecha}
+                  value={form.fecha && !isNaN(form.fecha.getTime()) ? form.fecha : new Date()}
                   onChange={handleDateChange}
                   onBlur={() => handleBlur('fecha')}
                   renderInput={(params) => (

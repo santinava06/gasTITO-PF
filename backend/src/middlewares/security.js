@@ -75,22 +75,27 @@ export const validateUserInput = [
 
 // Validación de inputs para gastos
 export const validateExpenseInput = [
-  body('description')
+  body('descripcion')
+    .optional()
     .trim()
     .isLength({ min: 3, max: 200 })
     .matches(/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s.,!?-]+$/)
     .withMessage('La descripción debe tener entre 3 y 200 caracteres'),
-  body('amount')
+  body('monto')
     .isFloat({ min: 0.01, max: 999999.99 })
     .withMessage('El monto debe ser un número válido entre 0.01 y 999999.99'),
-  body('category')
+  body('categoria')
     .trim()
     .isLength({ min: 2, max: 50 })
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
     .withMessage('La categoría debe tener entre 2 y 50 caracteres'),
-  body('date')
+  body('fecha')
     .isISO8601()
     .withMessage('Fecha inválida'),
+  body('member_emails')
+    .optional()
+    .isArray()
+    .withMessage('Los emails de miembros deben ser un array'),
 ];
 
 // Validación de inputs para grupos

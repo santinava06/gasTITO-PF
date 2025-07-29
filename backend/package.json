@@ -1,29 +1,35 @@
 {
   "name": "finanzas-familiares-backend",
   "version": "1.0.0",
+  "description": "Backend para aplicación de finanzas familiares",
   "main": "src/app.js",
   "type": "module",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": ["finanzas", "familia", "gastos", "grupos"],
+  "author": "Tu Nombre",
+  "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.0",
     "express": "^4.18.2",
-    "express-rate-limit": "^8.0.1",
-    "express-slow-down": "^2.1.0",
-    "express-validator": "^7.2.1",
-    "helmet": "^8.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "qrcode": "^1.5.4",
-    "speakeasy": "^2.0.0",
     "sqlite3": "^5.1.6",
-    "winston": "^3.17.0"
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.5",
+    "express-slow-down": "^2.0.1",
+    "helmet": "^7.1.0",
+    "express-validator": "^7.0.1",
+    "winston": "^3.11.0",
+    "speakeasy": "^2.0.0",
+    "qrcode": "^1.5.3"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

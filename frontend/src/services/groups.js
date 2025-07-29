@@ -1,26 +1,148 @@
-import { getToken, logout } from './auth';
-import { cachedApiCall, invalidateGroupCache, invalidateExpensesCache } from './cache';
+import { getToken } from './auth';
 
-const API_URL = (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/groups') : 'http://localhost:3001/api/groups');
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Función para manejar errores de autenticación
 const handleAuthError = (response) => {
   if (response.status === 401 || response.status === 403) {
-    logout();
+    // Token expirado o inválido, redirigir al login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     window.location.href = '/login';
     throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
   }
   throw new Error('Error en la solicitud');
 };
 
-export async function createGroup(groupData) {
+// Cache simple para mejorar performance
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+const cachedApiCall = async (key, apiCall) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  const data = await apiCall();
+  cache.set(key, { data, timestamp: Date.now() });
+  return data;
+};
+
+const invalidateCache = (pattern) => {
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) {
+      cache.delete(key);
+    }
+  }
+};
+
+export const getGroups = async () => {
+  return cachedApiCall('groups', async () => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const res = await fetch(`${API_URL}/groups`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!res.ok) {
+      return handleAuthError(res);
+    }
+    
+    return await res.json();
+  });
+};
+
+export const getGroupDetails = async (groupId) => {
+  return cachedApiCall(`group-${groupId}`, async () => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const res = await fetch(`${API_URL}/groups/${groupId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!res.ok) {
+      return handleAuthError(res);
+    }
+    
+    return await res.json();
+  });
+};
+
+export const getGroupExpenses = async (groupId, options = {}) => {
+  const { page = 0, limit = 10, search = '', sortBy = 'fecha', sortOrder = 'desc' } = options;
+  
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    search,
+    sortBy,
+    sortOrder
+  });
+
   const token = getToken();
   if (!token) {
-    logout();
-    window.location.href = '/login';
     throw new Error('No hay token de autenticación');
   }
-  const res = await fetch(API_URL, {
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/expenses?${queryParams}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  return await res.json();
+};
+
+export const addGroupExpense = async (groupId, expenseData) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/expenses`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(expenseData),
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de agregar
+  invalidateCache('group-expenses');
+  
+  return await res.json();
+};
+
+export const createGroup = async (groupData) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -28,119 +150,75 @@ export async function createGroup(groupData) {
     },
     body: JSON.stringify(groupData),
   });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function getGroups() {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(API_URL, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function getGroupDetails(groupId) {
-  return cachedApiCall(async (id) => {
-    const token = getToken();
-    if (!token) {
-      logout();
-      window.location.href = '/login';
-      throw new Error('No hay token de autenticación');
-    }
-    const res = await fetch(`${API_URL}/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    if (!res.ok) return handleAuthError(res);
-    return await res.json();
-  }, { groupId }, 10 * 60 * 1000); // Cache por 10 minutos
-}
-
-export async function getGroupExpenses(groupId, options = {}) {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
   }
   
-  // Construir query parameters
-  const params = new URLSearchParams();
-  if (options.page !== undefined) params.append('page', options.page);
-  if (options.limit !== undefined) params.append('limit', options.limit);
-  if (options.category) params.append('category', options.category);
-  if (options.search) params.append('search', options.search);
-  if (options.dateFilter) params.append('dateFilter', options.dateFilter);
-  if (options.sortBy) params.append('sortBy', options.sortBy);
-  if (options.sortOrder) params.append('sortOrder', options.sortOrder);
+  // Invalidar cache después de crear
+  invalidateCache('groups');
   
-  const res = await fetch(`${API_URL}/${groupId}/expenses?${params.toString()}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return handleAuthError(res);
   return await res.json();
-}
+};
 
-export async function addGroupExpense(groupId, expenseData) {
+export const updateGroup = async (groupId, groupData) => {
   const token = getToken();
   if (!token) {
-    logout();
-    window.location.href = '/login';
     throw new Error('No hay token de autenticación');
   }
-  const res = await fetch(`${API_URL}/${groupId}/expenses`, {
-    method: 'POST',
+
+  const res = await fetch(`${API_URL}/groups/${groupId}`, {
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(expenseData),
+    body: JSON.stringify(groupData),
   });
-  if (!res.ok) return handleAuthError(res);
   
-  // Invalidar cache de gastos después de agregar uno nuevo
-  invalidateExpensesCache(groupId);
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de actualizar
+  invalidateCache('groups');
+  invalidateCache(`group-${groupId}`);
   
   return await res.json();
-}
+};
 
-export async function deleteGroupExpense(groupId, expenseId) {
+export const deleteGroup = async (groupId) => {
   const token = getToken();
   if (!token) {
-    logout();
-    window.location.href = '/login';
     throw new Error('No hay token de autenticación');
   }
-  const res = await fetch(`${API_URL}/${groupId}/expenses/${expenseId}`, {
+
+  const res = await fetch(`${API_URL}/groups/${groupId}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
-  if (!res.ok) return handleAuthError(res);
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de eliminar
+  invalidateCache('groups');
+  invalidateCache(`group-${groupId}`);
+  
   return await res.json();
-}
+};
 
-export async function inviteToGroup(groupId, email) {
+export const inviteToGroup = async (groupId, email) => {
   const token = getToken();
   if (!token) {
-    logout();
-    window.location.href = '/login';
     throw new Error('No hay token de autenticación');
   }
-  const res = await fetch(`${API_URL}/${groupId}/invite`, {
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/invite`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,133 +226,84 @@ export async function inviteToGroup(groupId, email) {
     },
     body: JSON.stringify({ email }),
   });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function getPendingInvitations() {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(`${API_URL}/invitations/pending`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function acceptInvitation(invitationId) {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(`${API_URL}/invitations/${invitationId}/accept`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function updateMemberRole(groupId, userId, role) {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(`${API_URL}/${groupId}/members/${userId}/role`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({ role }),
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function deleteGroup(groupId) {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(`${API_URL}/${groupId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-export async function updateGroupExpense(groupId, expenseId, expenseData) {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
-  }
-  const res = await fetch(`${API_URL}/${groupId}/expenses/${expenseId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(expenseData),
-  });
-  if (!res.ok) return handleAuthError(res);
-  return await res.json();
-}
-
-// Nueva función para obtener todos los gastos de grupos para el dashboard analítico
-export async function getAllGroupExpenses() {
-  const token = getToken();
-  if (!token) {
-    logout();
-    window.location.href = '/login';
-    throw new Error('No hay token de autenticación');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
   }
   
-  try {
-    // Obtener todos los grupos del usuario
-    const groups = await getGroups();
-    
-    // Obtener gastos de todos los grupos
-    const allGroupExpenses = [];
-    for (const group of groups) {
-      try {
-        const groupExpensesResponse = await getGroupExpenses(group.id);
-        // Handle the new response structure: { expenses, pagination }
-        const groupExpenses = groupExpensesResponse.expenses || groupExpensesResponse;
-        // Agregar información del grupo a cada gasto
-        const expensesWithGroupInfo = groupExpenses.map(expense => ({
-          ...expense,
-          groupId: group.id,
-          groupName: group.nombre
-        }));
-        allGroupExpenses.push(...expensesWithGroupInfo);
-      } catch (error) {
-        console.error(`Error al obtener gastos del grupo ${group.id}:`, error);
-      }
-    }
-    
-    return allGroupExpenses;
-  } catch (error) {
-    console.error('Error al obtener todos los gastos de grupos:', error);
-    return [];
+  return await res.json();
+};
+
+export const getPendingInvitations = async () => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
   }
-} 
+
+  const res = await fetch(`${API_URL}/groups/invitations/pending`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  return await res.json();
+};
+
+export const acceptInvitation = async (invitationId) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/invitations/${invitationId}/accept`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de aceptar
+  invalidateCache('groups');
+  
+  return await res.json();
+};
+
+export const rejectInvitation = async (invitationId) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/invitations/${invitationId}/reject`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  return await res.json();
+};
+
+// Funciones para invalidar cache específico
+export const invalidateGroupCache = () => {
+  invalidateCache('groups');
+};
+
+export const invalidateExpensesCache = () => {
+  invalidateCache('group-expenses');
+}; 

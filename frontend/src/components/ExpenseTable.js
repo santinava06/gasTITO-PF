@@ -12,7 +12,12 @@ import {
   Tooltip,
   Chip,
   Box,
-  Fade
+  Fade,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -48,6 +53,18 @@ function ExpenseTable({ gastos, onEdit, onDelete }) {
       'Otros': '#9e9e9e'
     };
     return colors[category] || '#9e9e9e';
+  };
+
+  const [openDetail, setOpenDetail] = React.useState(false);
+  const [selectedExpense, setSelectedExpense] = React.useState(null);
+
+  const handleOpenDetail = (gasto) => {
+    setSelectedExpense(gasto);
+    setOpenDetail(true);
+  };
+  const handleCloseDetail = () => {
+    setOpenDetail(false);
+    setSelectedExpense(null);
   };
 
   return (
@@ -201,6 +218,7 @@ function ExpenseTable({ gastos, onEdit, onDelete }) {
                                 color: 'white'
                               }
                             }}
+                            onClick={() => handleOpenDetail(gasto)}
                           >
                             <VisibilityIcon />
                           </IconButton>
@@ -213,6 +231,28 @@ function ExpenseTable({ gastos, onEdit, onDelete }) {
             )}
           </TableBody>
         </Table>
+        {/* Dialogo de detalles */}
+        <Dialog open={openDetail} onClose={handleCloseDetail} maxWidth="xs" fullWidth>
+          <DialogTitle>Detalle del Gasto</DialogTitle>
+          <DialogContent dividers>
+            {selectedExpense && (
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">Fecha</Typography>
+                <Typography variant="body1" gutterBottom>{formatDate(selectedExpense.fecha)}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Categoría</Typography>
+                <Typography variant="body1" gutterBottom>{selectedExpense.categoria}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Descripción</Typography>
+                <Typography variant="body1" gutterBottom>{selectedExpense.descripcion}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">Monto</Typography>
+                <Typography variant="body1" gutterBottom>{formatCurrency(selectedExpense.monto)}</Typography>
+                {/* Puedes agregar más campos aquí si los hay */}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDetail} color="primary">Cerrar</Button>
+          </DialogActions>
+        </Dialog>
       </TableContainer>
     </Fade>
   );

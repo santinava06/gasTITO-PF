@@ -1,29 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Container, 
-  Typography, 
-  Grid, 
-  Paper, 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  DialogActions, 
-  Button,
-  Box,
-  Card,
-  CardContent,
-  Alert,
-  Chip,
-  LinearProgress,
-  Divider,
-  TextField,
-  IconButton,
-  Tooltip,
-  Fade,
-  Zoom,
-  Slide,
-  InputAdornment
+  Container, Typography, Grid, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Card, CardContent, Alert, LinearProgress, Divider, TextField, IconButton, Tooltip, Fade, Zoom, Slide, InputAdornment, Fab
 } from '@mui/material';
+import { styled, createTheme, ThemeProvider } from '@mui/material/styles';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -36,7 +15,8 @@ import {
   Settings as SettingsIcon,
   AccountBalance as AccountBalanceIcon,
   Speed as SpeedIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { 
   LineChart, 
@@ -142,7 +122,32 @@ const calculateCategoryDistribution = (expenses) => {
     .slice(0, 6); // Top 6 categorías
 };
 
+// Tema clásico, centrado
+const dashboardTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: '#22336c' },
+    secondary: { main: '#43a047' },
+    background: {
+      default: '#f4f6fb',
+      paper: '#fff'
+    },
+    text: {
+      primary: '#222',
+      secondary: '#6b7280'
+    }
+  },
+  typography: {
+    fontFamily: 'Inter, Poppins, Roboto, Arial, sans-serif',
+    h4: { fontWeight: 700, fontSize: 32, letterSpacing: 0.5 },
+    h6: { fontWeight: 600, fontSize: 20 },
+    subtitle1: { fontWeight: 400 }
+  },
+  shape: { borderRadius: 18 },
+});
+
 function Dashboard() {
+  const [darkMode, setDarkMode] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [recurringExpenses, setRecurringExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -260,112 +265,92 @@ function Dashboard() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Fade in={true} timeout={500}>
-        <Box>
-          <Typography variant="h4" gutterBottom>
+    <ThemeProvider theme={dashboardTheme}>
+      <Box sx={{ minHeight: '100vh', background: '#f4f6fb', fontFamily: 'Inter, Poppins, Roboto, Arial, sans-serif' }}>
+        <Container maxWidth="lg" sx={{ pt: 4, pb: 6 }}>
+          <Typography variant="h4" fontWeight={700} color="primary.main" mb={4}>
             Dashboard
           </Typography>
-          
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Resumen de tus gastos y finanzas personales
-          </Typography>
 
-          {/* Widgets de resumen rápido */}
+          {/* 1. Resumen rápido */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} sm={6} md={3}>
-              <Zoom in={true} timeout={300}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center" gap={1} mb={2}>
-                      <MoneyIcon color="primary" />
-                      <Typography variant="h6">Total Gastos</Typography>
-                    </Box>
-                    <Typography variant="h4" color="primary" gutterBottom>
-                      ${totalExpenses.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {expenses.length} gastos registrados
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Zoom>
+              <Card sx={{ boxShadow: 2, borderRadius: 3, p: 2 }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <MoneyIcon color="primary" sx={{ fontSize: 32 }} />
+                    <Typography variant="h6">Total Gastos</Typography>
+                  </Box>
+                  <Typography variant="h4" color="primary" gutterBottom>
+                    ${totalExpenses.toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {expenses.length} gastos registrados
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
-
             <Grid item xs={12} sm={6} md={3}>
-              <Zoom in={true} timeout={400}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center" gap={1} mb={2}>
-                      <AssessmentIcon color="primary" />
-                      <Typography variant="h6">Promedio</Typography>
-                    </Box>
-                    <Typography variant="h4" color="primary" gutterBottom>
-                      ${averageExpense.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Por gasto
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Zoom>
+              <Card sx={{ boxShadow: 2, borderRadius: 3, p: 2 }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <AssessmentIcon color="primary" sx={{ fontSize: 32 }} />
+                    <Typography variant="h6">Promedio</Typography>
+                  </Box>
+                  <Typography variant="h4" color="primary" gutterBottom>
+                    ${averageExpense.toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Por gasto
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
-
             <Grid item xs={12} sm={6} md={3}>
-              <Zoom in={true} timeout={500}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center" gap={1} mb={2}>
-                      <CalendarIcon color="primary" />
-                      <Typography variant="h6">Este Mes</Typography>
-                    </Box>
-                    <Typography variant="h4" color="primary" gutterBottom>
-                      ${currentMonthTotal.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Gastos del mes actual
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Zoom>
+              <Card sx={{ boxShadow: 2, borderRadius: 3, p: 2 }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <CalendarIcon color="primary" sx={{ fontSize: 32 }} />
+                    <Typography variant="h6">Este Mes</Typography>
+                  </Box>
+                  <Typography variant="h4" color="primary" gutterBottom>
+                    ${currentMonthTotal.toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Gastos del mes actual
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
-
             <Grid item xs={12} sm={6} md={3}>
-              <Zoom in={true} timeout={600}>
-                <Card>
-                  <CardContent>
-                    <Box display="flex" alignItems="center" gap={1} mb={2}>
-                      <AccountBalanceIcon color="primary" />
-                      <Typography variant="h6">Presupuesto</Typography>
-                    </Box>
-                    <Typography variant="h4" color="primary" gutterBottom>
-                      ${budget.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Presupuesto mensual
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Zoom>
+              <Card sx={{ boxShadow: 2, borderRadius: 3, p: 2 }}>
+                <CardContent>
+                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <AccountBalanceIcon color="primary" sx={{ fontSize: 32 }} />
+                    <Typography variant="h6">Presupuesto</Typography>
+                  </Box>
+                  <Typography variant="h4" color="primary" gutterBottom>
+                    ${budget.toFixed(2)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Presupuesto mensual
+                  </Typography>
+                </CardContent>
+              </Card>
             </Grid>
           </Grid>
 
-          {/* Alertas de presupuesto */}
+          <Divider sx={{ mb: 4 }} />
+
+          {/* 2. Alertas de presupuesto */}
           {budget > 0 && (
-            <Paper sx={{ p: 3, mb: 4 }}>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                {budgetUsage >= 90 ? (
-                  <WarningIcon color="error" />
-                ) : budgetUsage >= 75 ? (
-                  <WarningIcon color="warning" />
-                ) : (
-                  <CheckCircleIcon color="success" />
-                )}
+            <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: 1 }}>
+              <Box display="flex" alignItems="center" gap={2} mb={2}>
+                <WarningIcon color={budgetUsage >= 75 ? 'primary' : 'disabled'} sx={{ fontSize: 28 }} />
                 <Typography variant="h6">
                   Estado del Presupuesto
                 </Typography>
               </Box>
-              
               <Box sx={{ mb: 2 }}>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography variant="body2">
@@ -378,35 +363,32 @@ function Dashboard() {
                 <LinearProgress 
                   variant="determinate" 
                   value={Math.min(budgetUsage, 100)}
-                  color={budgetUsage >= 90 ? 'error' : budgetUsage >= 75 ? 'warning' : 'success'}
-                  sx={{ height: 8, borderRadius: 4 }}
+                  color={budgetUsage >= 90 ? 'error' : 'primary'}
+                  sx={{ height: 6, borderRadius: 3 }}
                 />
               </Box>
-
               {budgetUsage >= 90 && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   ¡Cuidado! Has gastado el {budgetUsage.toFixed(1)}% de tu presupuesto mensual.
                 </Alert>
               )}
-              
               {budgetUsage >= 75 && budgetUsage < 90 && (
                 <Alert severity="warning" sx={{ mb: 2 }}>
                   Has gastado el {budgetUsage.toFixed(1)}% de tu presupuesto. Considera reducir gastos.
                 </Alert>
               )}
-
               {budgetRemaining > 0 && (
                 <Alert severity="info">
                   Te quedan ${budgetRemaining.toFixed(2)} disponibles este mes.
                 </Alert>
               )}
-
               <Box sx={{ mt: 2 }}>
                 <Tooltip title="Configurar presupuesto" arrow>
                   <Button
                     variant="outlined"
                     startIcon={<SettingsIcon />}
                     onClick={() => setBudgetDialog(true)}
+                    color="primary"
                   >
                     Configurar Presupuesto
                   </Button>
@@ -415,66 +397,71 @@ function Dashboard() {
             </Paper>
           )}
 
-          {/* Gráficos */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {/* Tendencia mensual */}
-            <Grid item xs={12} md={6}>
-              <Slide direction="up" in={true} timeout={700}>
-                <Paper sx={{ p: 3, height: 400 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Tendencia Mensual
-                  </Typography>
-                  {monthlyTrends.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyTrends}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <RechartsTooltip formatter={(value) => `$${value}`} />
-                        <Line 
-                          type="monotone" 
-                          dataKey="total" 
-                          stroke="#22336c" 
-                          strokeWidth={3}
-                          dot={{ fill: '#22336c', strokeWidth: 2, r: 4 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <Box display="flex" alignItems="center" justifyContent="center" height="100%">
-                      <Typography color="text.secondary">
-                        No hay datos suficientes para mostrar la tendencia
-                      </Typography>
-                    </Box>
-                  )}
-                </Paper>
-              </Slide>
-            </Grid>
+          <Divider sx={{ mb: 4 }} />
 
-            {/* Gastos por día de la semana */}
+          {/* 3. Gastos recurrentes */}
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: 1 }}>
+            <Typography variant="h6" gutterBottom>Gastos Recurrentes</Typography>
+            <RecurringExpensesDashboard />
+          </Paper>
+
+          <Divider sx={{ mb: 4 }} />
+
+          {/* 4. Gráficos */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
-              <Slide direction="up" in={true} timeout={800}>
-                <Paper sx={{ p: 3, height: 400 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Gastos por Día de la Semana
-                  </Typography>
+              <Paper sx={{ p: 3, height: 400, borderRadius: 3, boxShadow: 1 }}>
+                <Typography variant="h6" gutterBottom>
+                  Tendencia Mensual
+                </Typography>
+                {monthlyTrends.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyExpenses}>
+                    <LineChart data={monthlyTrends}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
+                      <XAxis dataKey="month" />
                       <YAxis />
-                      <RechartsTooltip formatter={(value) => `$${value}`} />
-                      <Bar dataKey="total" fill="#43a047" />
-                    </BarChart>
+                      <Tooltip formatter={(value) => `$${value}`} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="total" 
+                        stroke="#22336c" 
+                        strokeWidth={2}
+                        dot={{ fill: '#22336c', strokeWidth: 1, r: 3 }}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
-                </Paper>
-              </Slide>
+                ) : (
+                  <Box display="flex" alignItems="center" justifyContent="center" height="100%">
+                    <Typography color="text.secondary">
+                      No hay datos suficientes para mostrar la tendencia
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 3, height: 400, borderRadius: 3, boxShadow: 1 }}>
+                <Typography variant="h6" gutterBottom>
+                  Gastos por Día de la Semana
+                </Typography>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyExpenses}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `$${value}`} />
+                    <Bar dataKey="total" fill="#43a047" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Paper>
             </Grid>
           </Grid>
 
+          <Divider sx={{ mb: 4 }} />
+
           {/* Distribución por categorías */}
           {categoryDistribution.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4 }}>
+            <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: 1 }}>
               <Typography variant="h6" gutterBottom>
                 Distribución por Categorías
               </Typography>
@@ -488,14 +475,14 @@ function Dashboard() {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        outerRadius={100}
+                        outerRadius={90}
                         label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                       >
                         {categoryDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill="#22336c" />
                         ))}
                       </Pie>
-                      <RechartsTooltip formatter={(value) => `$${value}`} />
+                      <Tooltip formatter={(value) => `$${value}`} />
                     </PieChart>
                   </ResponsiveContainer>
                 </Grid>
@@ -508,11 +495,11 @@ function Dashboard() {
                             width: 16,
                             height: 16,
                             borderRadius: '50%',
-                            bgcolor: COLORS[index % COLORS.length]
+                            bgcolor: '#22336c'
                           }}
                         />
                         <Box flex={1}>
-                          <Typography variant="body2" fontWeight={600}>
+                          <Typography variant="body2" fontWeight={500}>
                             {category.name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -530,32 +517,27 @@ function Dashboard() {
             </Paper>
           )}
 
-          {/* Botón agregar gasto */}
-          <Box display="flex" justifyContent="center" mb={3}>
-            <Tooltip title="Agregar nuevo gasto" arrow>
-              <Button
-                variant="contained"
-                size="large"
-                startIcon={<MoneyIcon />}
-                onClick={() => setAddDialog(true)}
-              >
-                Agregar Gasto
-              </Button>
-            </Tooltip>
-          </Box>
+          <Divider sx={{ mb: 4 }} />
 
-          {/* Tabla de gastos */}
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Gastos Recientes
-            </Typography>
-            <RecurringExpensesDashboard />
+          {/* 5. Tabla de gastos recientes */}
+          <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 1 }}>
+            <Typography variant="h6" gutterBottom>Gastos Recientes</Typography>
             <ExpenseTable 
               gastos={expenses.slice(0, 10)} 
               onEdit={handleEditExpense}
               onDelete={handleDeleteExpense}
             />
           </Paper>
+
+          {/* 6. Botón flotante para agregar gasto */}
+          <Fab 
+            color="primary" 
+            aria-label="add" 
+            sx={{ position: 'fixed', bottom: 32, right: 32, boxShadow: 4, transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.08)' } }} 
+            onClick={() => setAddDialog(true)}
+          >
+            <AddIcon />
+          </Fab>
 
           {/* Dialog agregar gasto */}
           <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="md" fullWidth>
@@ -595,7 +577,6 @@ function Dashboard() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Establece tu presupuesto mensual para recibir alertas cuando te acerques al límite.
               </Typography>
-              
               <TextField
                 label="Presupuesto mensual"
                 type="number"
@@ -622,14 +603,15 @@ function Dashboard() {
               <Button 
                 onClick={() => setBudgetDialog(false)} 
                 variant="contained"
+                color="primary"
               >
                 Guardar Presupuesto
               </Button>
             </DialogActions>
           </Dialog>
-        </Box>
-      </Fade>
-    </Container>
+        </Container>
+      </Box>
+    </ThemeProvider>
   );
 }
 
