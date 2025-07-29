@@ -2,19 +2,44 @@ import { getToken } from './auth';
 
 const API_URL = (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/api\/auth$/, '/api/expenses') : 'http://localhost:3001/api/expenses');
 
+// Función para manejar errores de autenticación
+const handleAuthError = (response) => {
+  if (response.status === 401 || response.status === 403) {
+    // Token expirado o inválido, redirigir al login
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+  }
+  throw new Error('Error en la solicitud');
+};
+
 export async function fetchExpenses() {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(API_URL, {
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
-  if (!res.ok) throw new Error('Error al obtener gastos');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 export async function addExpense(expense) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -23,24 +48,41 @@ export async function addExpense(expense) {
     },
     body: JSON.stringify(expense),
   });
-  if (!res.ok) throw new Error('Error al agregar gasto');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 export async function deleteExpense(id) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(`${API_URL}/${id}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
-  if (!res.ok) throw new Error('Error al eliminar gasto');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 export async function updateExpense(id, expense) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(`${API_URL}/${id}`, {
     method: 'PUT',
     headers: {
@@ -49,24 +91,41 @@ export async function updateExpense(id, expense) {
     },
     body: JSON.stringify(expense),
   });
-  if (!res.ok) throw new Error('Error al actualizar gasto');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 // Nuevas funciones para gestionar miembros
 export async function getMembers(expenseId) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(`${API_URL}/${expenseId}/members`, {
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
-  if (!res.ok) throw new Error('Error al obtener miembros');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 export async function addMember(expenseId, email) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(`${API_URL}/${expenseId}/members`, {
     method: 'POST',
     headers: {
@@ -75,18 +134,31 @@ export async function addMember(expenseId, email) {
     },
     body: JSON.stringify({ email }),
   });
-  if (!res.ok) throw new Error('Error al agregar miembro');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 }
 
 export async function removeMember(expenseId, memberId) {
   const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
   const res = await fetch(`${API_URL}/${expenseId}/members/${memberId}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
-  if (!res.ok) throw new Error('Error al quitar miembro');
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
   return await res.json();
 } 

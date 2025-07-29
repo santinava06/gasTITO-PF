@@ -1,35 +1,36 @@
 import db from '../models/expense.js';
+import { generateRealExpensesForUser } from '../utils/recurringExpenseGenerator.js';
 
 export const getExpenses = (req, res) => {
   const userId = req.user.id;
-  
-  // Obtener gastos del usuario y gastos compartidos donde es miembro
-  const query = `
-    SELECT DISTINCT e.*, u.email as creator_email,
-           GROUP_CONCAT(em.user_id) as member_ids,
-           GROUP_CONCAT(mu.email) as member_emails
-    FROM expenses e
-    LEFT JOIN users u ON e.user_id = u.id
-    LEFT JOIN expense_members em ON e.id = em.expense_id
-    LEFT JOIN users mu ON em.user_id = mu.id
-    WHERE e.user_id = ? OR e.id IN (
-      SELECT expense_id FROM expense_members WHERE user_id = ?
-    )
-    GROUP BY e.id
-    ORDER BY e.fecha DESC, e.id DESC
-  `;
-  
-  db.all(query, [userId, userId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    // Procesar los resultados para separar miembros
-    const expenses = rows.map(row => ({
-      ...row,
-      member_ids: row.member_ids ? row.member_ids.split(',').map(Number) : [],
-      member_emails: row.member_emails ? row.member_emails.split(',') : []
-    }));
-    
-    res.json(expenses);
+  // Generar gastos reales a partir de los recurrentes antes de listar
+  generateRealExpensesForUser(userId, (err) => {
+    if (err) return res.status(500).json({ error: 'Error generando gastos recurrentes' });
+    // Obtener gastos del usuario y gastos compartidos donde es miembro
+    const query = `
+      SELECT DISTINCT e.*, u.email as creator_email,
+             GROUP_CONCAT(em.user_id) as member_ids,
+             GROUP_CONCAT(mu.email) as member_emails
+      FROM expenses e
+      LEFT JOIN users u ON e.user_id = u.id
+      LEFT JOIN expense_members em ON e.id = em.expense_id
+      LEFT JOIN users mu ON em.user_id = mu.id
+      WHERE e.user_id = ? OR e.id IN (
+        SELECT expense_id FROM expense_members WHERE user_id = ?
+      )
+      GROUP BY e.id
+      ORDER BY e.fecha DESC, e.id DESC
+    `;
+    db.all(query, [userId, userId], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      // Procesar los resultados para separar miembros
+      const expenses = rows.map(row => ({
+        ...row,
+        member_ids: row.member_ids ? row.member_ids.split(',').map(Number) : [],
+        member_emails: row.member_emails ? row.member_emails.split(',') : []
+      }));
+      res.json(expenses);
+    });
   });
 };
 

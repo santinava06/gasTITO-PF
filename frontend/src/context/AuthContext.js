@@ -1,15 +1,27 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, getUser, logout as logoutService } from '../services/auth';
+import { getToken, getUser, logout as logoutService, isAuthenticated } from '../services/auth';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(getUser());
-  const [token, setToken] = useState(getToken());
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getUser());
-    setToken(getToken());
+    // Verificar autenticación al cargar la app
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        setUser(getUser());
+        setToken(getToken());
+      } else {
+        setUser(null);
+        setToken(null);
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
   const login = (user, token) => {
@@ -23,13 +35,35 @@ export function AuthProvider({ children }) {
     setToken(null);
   };
 
+  // Función para verificar si el token sigue siendo válido
+  const checkTokenValidity = () => {
+    const currentToken = getToken();
+    if (!currentToken) {
+      logout();
+      return false;
+    }
+    return true;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      token, 
+      login, 
+      logout, 
+      loading,
+      checkTokenValidity,
+      isAuthenticated: isAuthenticated()
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+  }
+  return context;
 } 

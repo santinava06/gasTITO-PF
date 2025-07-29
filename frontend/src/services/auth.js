@@ -26,7 +26,26 @@ export function saveAuth({ token, user }) {
 }
 
 export function getToken() {
-  return localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  
+  // Verificar si el token está expirado
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const currentTime = Date.now() / 1000;
+    
+    if (payload.exp && payload.exp < currentTime) {
+      // Token expirado, limpiar localStorage
+      logout();
+      return null;
+    }
+    
+    return token;
+  } catch (error) {
+    // Token inválido, limpiar localStorage
+    logout();
+    return null;
+  }
 }
 
 export function getUser() {
@@ -37,4 +56,10 @@ export function getUser() {
 export function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+}
+
+// Función para verificar si el usuario está autenticado
+export function isAuthenticated() {
+  const token = getToken();
+  return token !== null;
 } 

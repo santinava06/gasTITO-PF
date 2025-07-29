@@ -75,6 +75,21 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users (id),
     UNIQUE(expense_id, user_id)
   )`);
+
+  // Tabla de gastos recurrentes personales
+  db.run(`CREATE TABLE IF NOT EXISTS recurring_expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_by INTEGER NOT NULL,
+    monto REAL NOT NULL,
+    descripcion TEXT,
+    categoria TEXT,
+    frecuencia TEXT NOT NULL,
+    proxima_fecha TEXT NOT NULL,
+    ultima_fecha TEXT,
+    activo INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES users (id)
+  )`);
 });
 
 export default db; 

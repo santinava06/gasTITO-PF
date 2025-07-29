@@ -260,30 +260,129 @@ export const addGroupExpense = (req, res) => {
     });
 };
 
-// Obtener gastos de un grupo
-export const getGroupExpenses = (req, res) => {
+// Obtener gastos de un grupo con paginación y filtros
+export const getGroupExpenses = async (req, res) => {
   const { groupId } = req.params;
   const userId = req.user.id;
+  
+  // Ejecutar generación automática de gastos reales a partir de los recurrentes
+  try {
+    // await generateRealExpensesForGroup(groupId); // This line is removed
+  } catch (err) {
+    // No bloquear la consulta si falla la generación automática
+    console.error('Error generando gastos recurrentes:', err);
+  }
+
+  // Parámetros de paginación y filtros
+  const page = parseInt(req.query.page) || 0;
+  const limit = parseInt(req.query.limit) || 50;
+  const offset = page * limit;
+  const category = req.query.category;
+  const search = req.query.search;
+  const dateFilter = req.query.dateFilter;
+  const sortBy = req.query.sortBy || 'fecha';
+  const sortOrder = req.query.sortOrder || 'DESC';
+  
+  // Validar parámetros de ordenamiento
+  const validSortFields = ['fecha', 'monto', 'categoria', 'descripcion'];
+  const validSortOrders = ['ASC', 'DESC'];
+  
+  if (!validSortFields.includes(sortBy)) {
+    return res.status(400).json({ error: 'Campo de ordenamiento inválido' });
+  }
+  
+  if (!validSortOrders.includes(sortOrder.toUpperCase())) {
+    return res.status(400).json({ error: 'Orden de ordenamiento inválido' });
+  }
 
   // Verificar que el usuario sea miembro del grupo
-  db.get('SELECT * FROM group_members WHERE group_id = ? AND user_id = ?', 
+  db.get('SELECT * FROM group_members WHERE group_id = ? AND user_id = ?',
     [groupId, userId], (err, membership) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!membership) {
         return res.status(403).json({ error: 'No tienes acceso a este grupo' });
       }
 
-      const query = `
+      // Construir la consulta base con filtros
+      let query = `
         SELECT ge.*, u.email as paid_by_email
         FROM group_expenses ge
         JOIN users u ON ge.paid_by = u.id
         WHERE ge.group_id = ?
-        ORDER BY ge.fecha DESC, ge.created_at DESC
       `;
-
-      db.all(query, [groupId], (err, expenses) => {
+      
+      const queryParams = [groupId];
+      
+      // Aplicar filtros
+      if (category && category !== 'all') {
+        query += ' AND ge.categoria = ?';
+        queryParams.push(category);
+      }
+      
+      if (search) {
+        query += ' AND (ge.descripcion LIKE ? OR ge.categoria LIKE ? OR u.email LIKE ?)';
+        const searchPattern = `%${search}%`;
+        queryParams.push(searchPattern, searchPattern, searchPattern);
+      }
+      
+      if (dateFilter && dateFilter !== 'all') {
+        const now = new Date();
+        let dateCondition = '';
+        
+        switch (dateFilter) {
+          case 'today':
+            dateCondition = 'AND DATE(ge.fecha) = DATE(?)';
+            queryParams.push(now.toISOString());
+            break;
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            dateCondition = 'AND ge.fecha >= ?';
+            queryParams.push(weekAgo.toISOString());
+            break;
+          case 'month':
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            dateCondition = 'AND ge.fecha >= ?';
+            queryParams.push(monthAgo.toISOString());
+            break;
+        }
+        
+        if (dateCondition) {
+          query += ' ' + dateCondition;
+        }
+      }
+      
+      // Agregar ordenamiento
+      query += ` ORDER BY ge.${sortBy} ${sortOrder.toUpperCase()}, ge.created_at DESC`;
+      
+      // Consulta para obtener el total de registros
+      const countQuery = query.replace(/SELECT ge\.\*, u\.email as paid_by_email/, 'SELECT COUNT(*) as total');
+      
+      // Ejecutar consulta de conteo
+      db.get(countQuery, queryParams, (err, countResult) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(expenses);
+        
+        const total = countResult.total;
+        
+        // Agregar paginación
+        query += ' LIMIT ? OFFSET ?';
+        queryParams.push(limit, offset);
+        
+        // Ejecutar consulta principal
+        db.all(query, queryParams, (err, expenses) => {
+          if (err) return res.status(500).json({ error: err.message });
+          
+          res.json({
+            expenses,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages: Math.ceil(total / limit),
+              hasNext: page < Math.ceil(total / limit) - 1,
+              hasPrev: page > 0
+            }
+          });
+        });
       });
     });
 };
