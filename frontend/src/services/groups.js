@@ -136,6 +136,80 @@ export const addGroupExpense = async (groupId, expenseData) => {
   return await res.json();
 };
 
+export const updateGroupExpense = async (groupId, expenseId, expenseData) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/expenses/${expenseId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(expenseData),
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de actualizar
+  invalidateCache('group-expenses');
+  
+  return await res.json();
+};
+
+export const deleteGroupExpense = async (groupId, expenseId) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/expenses/${expenseId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de eliminar
+  invalidateCache('group-expenses');
+  
+  return await res.json();
+};
+
+export const updateMemberRole = async (groupId, memberId, role) => {
+  const token = getToken();
+  if (!token) {
+    throw new Error('No hay token de autenticación');
+  }
+
+  const res = await fetch(`${API_URL}/groups/${groupId}/members/${memberId}/role`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ role }),
+  });
+  
+  if (!res.ok) {
+    return handleAuthError(res);
+  }
+  
+  // Invalidar cache después de actualizar
+  invalidateCache(`group-${groupId}`);
+  
+  return await res.json();
+};
+
 export const createGroup = async (groupData) => {
   const token = getToken();
   if (!token) {
