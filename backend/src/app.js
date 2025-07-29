@@ -30,12 +30,27 @@ const PORT = process.env.PORT || 3001;
 
 // Configuración de CORS para producción
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL || 'https://gas-tito-pf.vercel.app']
-    : ['http://localhost:3000'],
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como mobile apps o Postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://gas-tito-pf.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));

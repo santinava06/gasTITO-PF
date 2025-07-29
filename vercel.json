@@ -9,6 +9,6 @@
     }
   ],
   "env": {
-    "REACT_APP_API_URL": "https://gastito-pf.onrender.com/api"
+    "REACT_APP_API_URL": "https://gastito-pf.onrender.com"
   }
 } 
