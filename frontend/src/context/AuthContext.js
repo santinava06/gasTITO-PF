@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, getUser, logout as logoutService, isAuthenticated } from '../services/auth';
+import { getToken, removeToken, isAuthenticated } from '../services/auth';
 
 const AuthContext = createContext();
 
@@ -12,8 +12,9 @@ export function AuthProvider({ children }) {
     // Verificar autenticación al cargar la app
     const checkAuth = () => {
       if (isAuthenticated()) {
-        setUser(getUser());
         setToken(getToken());
+        // Para desarrollo, podemos crear un usuario básico
+        setUser({ email: 'usuario@ejemplo.com' });
       } else {
         setUser(null);
         setToken(null);
@@ -30,7 +31,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    logoutService();
+    removeToken();
     setUser(null);
     setToken(null);
   };

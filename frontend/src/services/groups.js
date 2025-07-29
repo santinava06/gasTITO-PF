@@ -306,4 +306,36 @@ export const invalidateGroupCache = () => {
 
 export const invalidateExpensesCache = () => {
   invalidateCache('group-expenses');
+};
+
+// Función para obtener todos los gastos de grupos
+export const getAllGroupExpenses = async () => {
+  try {
+    // Obtener todos los grupos del usuario
+    const groups = await getGroups();
+    
+    // Obtener gastos de todos los grupos
+    const allGroupExpenses = [];
+    for (const group of groups) {
+      try {
+        const groupExpensesResponse = await getGroupExpenses(group.id);
+        // Handle the new response structure: { expenses, pagination }
+        const groupExpenses = groupExpensesResponse.expenses || groupExpensesResponse;
+        // Agregar información del grupo a cada gasto
+        const expensesWithGroupInfo = groupExpenses.map(expense => ({
+          ...expense,
+          groupId: group.id,
+          groupName: group.nombre
+        }));
+        allGroupExpenses.push(...expensesWithGroupInfo);
+      } catch (error) {
+        console.error(`Error al obtener gastos del grupo ${group.id}:`, error);
+      }
+    }
+    
+    return allGroupExpenses;
+  } catch (error) {
+    console.error('Error al obtener todos los gastos de grupos:', error);
+    return [];
+  }
 }; 

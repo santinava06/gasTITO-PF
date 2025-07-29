@@ -31,11 +31,9 @@ import {
 
 // Función para calcular deudas entre miembros
 const calculateMemberDebts = (expenses, members) => {
-  console.log('calculateMemberDebts - expenses:', expenses);
-  console.log('calculateMemberDebts - members:', members);
+  // Debug logs removed for production
   
   if (!expenses || !members || expenses.length === 0 || members.length === 0) {
-    console.log('calculateMemberDebts - datos insuficientes');
     return {
       totalExpenses: 0,
       averagePerPerson: 0,
@@ -54,7 +52,7 @@ const calculateMemberDebts = (expenses, members) => {
     const totalSpent = memberExpenses.reduce((sum, expense) => sum + Number(expense.monto), 0);
     const balance = totalSpent - averagePerPerson;
     
-    console.log(`Member ${member.email}: spent ${totalSpent}, balance ${balance}`);
+    // Debug log removed for production
     
     return {
       ...member,
@@ -122,10 +120,7 @@ const getInitials = (name) => {
 
 function MemberDebts({ expenses, members, groupName }) {
   const debtAnalysis = useMemo(() => {
-    console.log('MemberDebts - expenses:', expenses);
-    console.log('MemberDebts - members:', members);
     const result = calculateMemberDebts(expenses, members);
-    console.log('MemberDebts - debtAnalysis:', result);
     return result;
   }, [expenses, members]);
 

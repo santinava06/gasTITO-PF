@@ -18,7 +18,7 @@ import {
   PersonAdd as PersonAddIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { register as registerService, saveAuth } from '../services/auth';
+import { register as registerService, setToken } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -132,8 +132,8 @@ function Register() {
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
       try {
-        const data = await registerService(form.email, form.password);
-        saveAuth(data);
+        const data = await registerService({ email: form.email, password: form.password });
+        setToken(data.token);
         login(data.user, data.token);
         navigate('/');
       } catch {

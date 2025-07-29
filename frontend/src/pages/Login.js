@@ -17,7 +17,7 @@ import {
   VisibilityOff as VisibilityOffIcon,
   Login as LoginIcon
 } from '@mui/icons-material';
-import { login as loginService, saveAuth } from '../services/auth';
+import { login as loginService, setToken } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -93,8 +93,8 @@ function Login() {
     if (Object.keys(newErrors).length === 0) {
       setLoading(true);
       try {
-        const data = await loginService(form.email, form.password);
-        saveAuth(data);
+        const data = await loginService({ email: form.email, password: form.password });
+        setToken(data.token);
         login(data.user, data.token);
         navigate('/');
       } catch {
