@@ -1,144 +1,126 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import {
-  AppBar, Toolbar, Button, Typography, Box, Avatar, IconButton, Menu, MenuItem, Divider, Tooltip, useTheme, alpha
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  IconButton,
+  Menu,
+  MenuItem,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import GroupsIcon from '@mui/icons-material/Groups';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import LogoutIcon from '@mui/icons-material/Logout';
-import LoginIcon from '@mui/icons-material/Login';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import {
+  Dashboard as DashboardIcon,
+  Group as GroupIcon,
+  Assessment as AssessmentIcon,
+  AccountCircle as AccountCircleIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-function stringAvatar(email) {
-  if (!email) return '';
-  const name = email.split('@')[0];
-  const parts = name.split(/[._-]/);
-  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : name.slice(0, 2);
-  return initials.toUpperCase();
-}
-
-function Navbar() {
-  const { user, logout, token } = useAuth();
+const Navbar = () => {
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = useState(null);
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleAvatarClick = (event) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleLogout = () => {
     logout();
+    handleClose();
     navigate('/login');
-    handleMenuClose();
+  };
+
+  const navItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Grupos', icon: <GroupIcon />, path: '/groups' },
+    { text: 'Reportes', icon: <AssessmentIcon />, path: '/reportes' }
+  ];
+
+  const handleNavClick = (path) => {
+    navigate(path);
+    if (isMobile) {
+      handleClose();
+    }
   };
 
   return (
-    <AppBar
-      position="sticky"
-      elevation={3}
-      sx={{
-        background: `rgba(30, 41, 59, 0.85)`,
-        backdropFilter: 'blur(8px)',
-        boxShadow: `0 2px 12px ${alpha(theme.palette.primary.main, 0.08)}`
-      }}
-    >
+    <AppBar position="static">
       <Toolbar>
-        {/* Navegación */}
-        {token ? (
-          <Box display="flex" alignItems="center" gap={1} flexGrow={1}>
-            <Tooltip title="Dashboard" arrow>
-              <Button
-                color="inherit"
-                component={Link}
-                to="/"
-                startIcon={<DashboardIcon />}
-                sx={{ fontWeight: 600, borderRadius: 2, px: 2, transition: 'background 0.2s', '&:hover': { background: alpha(theme.palette.primary.light, 0.15) } }}
-              >
-                Dashboard
-              </Button>
-            </Tooltip>
-            <Tooltip title="Grupos" arrow>
-              <Button
-                color="inherit"
-                component={Link}
-                to="/groups"
-                startIcon={<GroupsIcon />}
-                sx={{ fontWeight: 600, borderRadius: 2, px: 2, transition: 'background 0.2s', '&:hover': { background: alpha(theme.palette.primary.light, 0.15) } }}
-              >
-                Grupos
-              </Button>
-            </Tooltip>
-            <Tooltip title="Reportes" arrow>
-              <Button
-                color="inherit"
-                component={Link}
-                to="/reportes"
-                startIcon={<AssessmentIcon />}
-                sx={{ fontWeight: 600, borderRadius: 2, px: 2, transition: 'background 0.2s', '&:hover': { background: alpha(theme.palette.primary.light, 0.15) } }}
-              >
-                Reportes
-              </Button>
-            </Tooltip>
-            <Box flexGrow={1} />
-            {/* Avatar usuario */}
-            <Tooltip title={user?.email || ''} arrow>
-              <IconButton onClick={handleAvatarClick} size="small" sx={{
-                ml: 1,
-                border: `2px solid ${theme.palette.secondary.main}`,
-                boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.18)}`,
-                transition: 'transform 0.15s',
-                '&:hover': { transform: 'scale(1.08)' }
-              }}>
-                <Avatar sx={{ bgcolor: 'secondary.main', width: 40, height: 40 }}>
-                  {stringAvatar(user?.email)}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          GasTITO
+        </Typography>
+
+        {isMobile ? (
+          <>
+            <IconButton
+              size="large"
+              edge="end"
+              color="inherit"
+              aria-label="menu"
+              onClick={handleMenu}
+            >
+              <MenuIcon />
+            </IconButton>
             <Menu
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              onClose={handleClose}
             >
-              <Box px={2} py={1}>
-                <Typography variant="subtitle1" fontWeight={700}>
-                  {user?.email}
-                </Typography>
-              </Box>
-              <Divider />
+              {navItems.map((item) => (
+                <MenuItem
+                  key={item.text}
+                  onClick={() => handleNavClick(item.path)}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {item.icon}
+                    {item.text}
+                  </Box>
+                </MenuItem>
+              ))}
               <MenuItem onClick={handleLogout}>
-                <LogoutIcon fontSize="small" sx={{ mr: 1 }} />
-                Cerrar sesión
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <AccountCircleIcon />
+                  Cerrar Sesión
+                </Box>
               </MenuItem>
             </Menu>
-          </Box>
+          </>
         ) : (
-          <Box display="flex" alignItems="center" gap={1} flexGrow={1} justifyContent="flex-end">
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {navItems.map((item) => (
+              <Button
+                key={item.text}
+                color="inherit"
+                startIcon={item.icon}
+                onClick={() => handleNavClick(item.path)}
+              >
+                {item.text}
+              </Button>
+            ))}
             <Button
               color="inherit"
-              component={Link}
-              to="/login"
-              startIcon={<LoginIcon />}
-              sx={{ fontWeight: 600, borderRadius: 2, px: 2 }}
+              startIcon={<AccountCircleIcon />}
+              onClick={handleLogout}
             >
-              Ingresar
-            </Button>
-            <Button
-              color="inherit"
-              component={Link}
-              to="/register"
-              startIcon={<PersonAddIcon />}
-              sx={{ fontWeight: 600, borderRadius: 2, px: 2 }}
-            >
-              Registrarse
+              Cerrar Sesión
             </Button>
           </Box>
         )}
       </Toolbar>
     </AppBar>
   );
-}
+};
 
 export default Navbar; 

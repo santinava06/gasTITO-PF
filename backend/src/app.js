@@ -9,6 +9,7 @@ import expensesRouter from './routes/expenses.js';
 import groupsRouter from './routes/groups.js';
 import twoFactorRouter from './routes/twoFactor.js';
 import recurringExpensesRouter from './routes/recurringExpenses.js';
+import budgetsRouter from './routes/budgets.js';
 
 // Importar middlewares de seguridad
 import { 
@@ -36,6 +37,7 @@ const corsOptions = {
     
     const allowedOrigins = [
       'https://gas-tito-pf.vercel.app',
+      'https://gastito-pf.onrender.com',
       'http://localhost:3000',
       'http://localhost:3001'
     ];
@@ -84,6 +86,7 @@ app.use('/api/expenses', expensesRouter);
 app.use('/api/groups', groupsRouter);
 app.use('/api/2fa', twoFactorRouter);
 app.use('/api/recurring-expenses', recurringExpensesRouter);
+app.use('/api/budgets', budgetsRouter);
 
 // Ruta raíz
 app.get('/', (req, res) => {

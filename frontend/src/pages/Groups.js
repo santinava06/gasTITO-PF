@@ -27,7 +27,12 @@ import {
   Alert,
   InputAdornment,
   Fade,
-  Zoom
+  Zoom,
+  Avatar,
+  Divider,
+  LinearProgress,
+  useTheme,
+  alpha
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,7 +42,14 @@ import {
   Description as DescriptionIcon,
   Email as EmailIcon,
   Create as CreateIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  People as PeopleIcon,
+  AttachMoney as MoneyIcon,
+  CalendarToday as CalendarIcon,
+  Person as PersonIcon,
+  AdminPanelSettings as AdminIcon,
+  Security as SecurityIcon,
+  Celebration as CelebrationIcon
 } from '@mui/icons-material';
 import {
   createGroup,
@@ -55,6 +67,7 @@ import { SectionLoading } from '../components/LoadingSpinner';
 
 function Groups() {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [groups, setGroups] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [createDialog, setCreateDialog] = useState(false);
@@ -65,7 +78,7 @@ function Groups() {
   const [newGroup, setNewGroup] = useState({ name: '', description: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const { showSuccess, showError } = useSnackbar();
-  const COLORS = ['#22336c', '#43a047', '#fbc02d', '#e57373', '#6b7280', '#8e24aa', '#00838f'];
+  const COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'];
   const [expensesByMember, setExpensesByMember] = useState([]);
   const [loadingExpenses, setLoadingExpenses] = useState(false);
   const { user } = useAuth();
@@ -242,6 +255,7 @@ function Groups() {
         getGroupExpenses(groupId)
       ]);
       setSelectedGroup(details);
+      setGroupDetails(details);
       // Handle the new response structure: { expenses, pagination }
       const expenses = expensesResponse.expenses || expensesResponse;
       setExpensesByMember(expenses);
@@ -263,8 +277,10 @@ function Groups() {
     }
   };
 
-  const GroupCard = ({ group }) => {
+  const GroupCard = ({ group, index }) => {
     const [totalGastos, setTotalGastos] = useState(null);
+    const colorIndex = index % COLORS.length;
+    const gradientColor = COLORS[colorIndex];
 
     useEffect(() => {
       const loadGroupExpenses = async () => {
@@ -282,38 +298,145 @@ function Groups() {
     }, [group.id]);
 
     return (
-      <Zoom in={true} timeout={300}>
-        <Paper
+      <Zoom in={true} timeout={300 + index * 100}>
+        <Card
           sx={{ 
             height: '100%', 
             display: 'flex', 
             flexDirection: 'column', 
             cursor: 'pointer', 
-            transition: 'all 0.3s ease',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            background: `linear-gradient(135deg, ${alpha(gradientColor, 0.1)} 0%, ${alpha(gradientColor, 0.05)} 100%)`,
+            border: `1px solid ${alpha(gradientColor, 0.2)}`,
             '&:hover': { 
-              boxShadow: 6, 
-              bgcolor: '#f4f6fa',
-              transform: 'translateY(-2px)'
+              boxShadow: `0 8px 32px ${alpha(gradientColor, 0.3)}`,
+              transform: 'translateY(-4px) scale(1.02)',
+              border: `1px solid ${alpha(gradientColor, 0.4)}`
             }
           }}
-          elevation={3}
+          elevation={2}
           onClick={() => navigate(`/groups/${group.id}/expenses`)}
           tabIndex={0}
           role="button"
           aria-label={`Ver grupo ${group.name}`}
         >
-          <CardContent sx={{ flexGrow: 1 }}>
+          <CardContent sx={{ flexGrow: 1, p: 3 }}>
+            {/* Header con gradiente */}
+            <Box 
+              sx={{ 
+                background: `linear-gradient(135deg, ${gradientColor} 0%, ${alpha(gradientColor, 0.8)} 100%)`,
+                borderRadius: 2,
+                p: 2,
+                mb: 2,
+                color: 'white',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <Box sx={{ position: 'absolute', top: -10, right: -10, opacity: 0.1 }}>
+                <GroupIcon sx={{ fontSize: 60 }} />
+              </Box>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    {group.name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    {group.description || 'Sin descripción'}
+                  </Typography>
+                </Box>
+                <Avatar 
+                  sx={{ 
+                    bgcolor: 'rgba(255,255,255,0.2)', 
+                    width: 48, 
+                    height: 48,
+                    border: '2px solid rgba(255,255,255,0.3)'
+                  }}
+                >
+                  <GroupIcon />
+                </Avatar>
+              </Box>
+            </Box>
+
+            {/* Stats */}
+            <Box sx={{ mb: 2 }}>
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <PeopleIcon color="primary" sx={{ fontSize: 20 }} />
+                <Typography variant="body2" color="text.secondary">
+                  <strong>{group.member_count}</strong> miembros
+                </Typography>
+              </Box>
+              <Box display="flex" alignItems="center" gap={1}>
+                <MoneyIcon color="success" sx={{ fontSize: 20 }} />
+                <Typography variant="body2" color="text.secondary">
+                  <strong>{totalGastos === null ? '...' : `$${totalGastos.toLocaleString()}`}</strong> total
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Role Badge */}
             <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <GroupIcon color="primary" />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>{group.name}</Typography>
-              {group.user_role === 'owner' && (<Chip label="Propietario" color="warning" size="small" />)}
-              {group.user_role === 'admin' && (<Chip label="Admin" color="primary" size="small" />)}
+              {group.user_role === 'owner' && (
+                <Chip 
+                  icon={<SecurityIcon />}
+                  label="Propietario" 
+                  color="warning" 
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+              {group.user_role === 'admin' && (
+                <Chip 
+                  icon={<AdminIcon />}
+                  label="Administrador" 
+                  color="primary" 
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+              {group.user_role === 'member' && (
+                <Chip 
+                  icon={<PersonIcon />}
+                  label="Miembro" 
+                  color="default" 
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+            </Box>
+
+            {/* Actions */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mt="auto">
+              <Tooltip title="Ver detalles del grupo" arrow>
+                <IconButton 
+                  size="small" 
+                  sx={{ 
+                    color: gradientColor,
+                    '&:hover': { 
+                      bgcolor: alpha(gradientColor, 0.1),
+                      transform: 'scale(1.1)'
+                    }
+                  }}
+                  onClick={e => { 
+                    e.stopPropagation(); 
+                    handleViewGroupDetails(group.id); 
+                  }}
+                >
+                  <VisibilityIcon />
+                </IconButton>
+              </Tooltip>
+              
               {(group.user_role === 'owner' || group.user_role === 'admin') && (
                 <Tooltip title="Eliminar grupo" arrow>
                   <IconButton 
                     size="small" 
-                    color="error" 
-                    sx={{ ml: 1 }} 
+                    color="error"
+                    sx={{ 
+                      '&:hover': { 
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                        transform: 'scale(1.1)'
+                      }
+                    }}
                     onClick={e => { 
                       e.stopPropagation(); 
                       handleDeleteGroup(group.id); 
@@ -324,51 +447,53 @@ function Groups() {
                 </Tooltip>
               )}
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{group.description || 'Sin descripción'}</Typography>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">Miembros: <b>{group.member_count}</b></Typography>
-                <Typography variant="body2" color="text.secondary">Total gastos: <b>{totalGastos === null ? '...' : `$${totalGastos}`}</b></Typography>
-              </Box>
-              <Tooltip title="Ver detalles del grupo" arrow>
-                <IconButton 
-                  size="small" 
-                  color="primary"
-                  onClick={e => { 
-                    e.stopPropagation(); 
-                    handleViewGroupDetails(group.id); 
-                  }}
-                >
-                  <VisibilityIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
           </CardContent>
-        </Paper>
+        </Card>
       </Zoom>
     );
   };
 
-  const InvitationCard = ({ invitation }) => (
-    <Fade in={true} timeout={500}>
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
+  const InvitationCard = ({ invitation, index }) => (
+    <Fade in={true} timeout={500 + index * 100}>
+      <Card 
+        sx={{ 
+          mb: 2,
+          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.primary.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+          '&:hover': {
+            boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.2)}`,
+            transform: 'translateY(-2px)'
+          }
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
           <Box display="flex" alignItems="center" justifyContent="space-between">
             <Box>
-              <Typography variant="h6">{invitation.group_name}</Typography>
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <CelebrationIcon color="primary" />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {invitation.group_name}
+                </Typography>
+              </Box>
               <Typography variant="body2" color="text.secondary">
-                Invitado por: {invitation.invited_by_email}
+                Invitado por: <strong>{invitation.invited_by_email}</strong>
               </Typography>
             </Box>
-            <Tooltip title="Aceptar invitación" arrow>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => handleAcceptInvitation(invitation.token)}
-              >
-                Aceptar
-              </Button>
-            </Tooltip>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<GroupIcon />}
+              onClick={() => handleAcceptInvitation(invitation.token)}
+              sx={{
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+                  transform: 'scale(1.05)'
+                }
+              }}
+            >
+              Aceptar
+            </Button>
           </Box>
         </CardContent>
       </Card>
@@ -381,76 +506,168 @@ function Groups() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Fade in={true} timeout={500}>
         <Box>
-          <Typography variant="h4" gutterBottom>
-            Grupos de Gastos
-          </Typography>
-          
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Gestiona tus grupos de gastos compartidos
-          </Typography>
+          {/* Header mejorado */}
+          <Box 
+            sx={{ 
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+              borderRadius: 3,
+              p: 4,
+              mb: 4,
+              color: 'white',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ position: 'absolute', top: -20, right: -20, opacity: 0.1 }}>
+              <GroupIcon sx={{ fontSize: 120 }} />
+            </Box>
+            <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
+              Grupos de Gastos
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400 }}>
+              Gestiona tus grupos de gastos compartidos de manera eficiente
+            </Typography>
+          </Box>
 
           {/* Invitaciones pendientes */}
           {invitations.length > 0 && (
-            <Paper sx={{ p: 3, mb: 4 }}>
-              <Typography variant="h6" gutterBottom>
-                Invitaciones Pendientes ({invitations.length})
-              </Typography>
-              {invitations.map((invitation) => (
-                <InvitationCard key={invitation.id} invitation={invitation} />
+            <Paper 
+              sx={{ 
+                p: 3, 
+                mb: 4,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.1)} 0%, ${alpha(theme.palette.warning.light, 0.05)} 100%)`,
+                border: `1px solid ${alpha(theme.palette.warning.main, 0.2)}`
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={2} mb={3}>
+                <CelebrationIcon color="warning" sx={{ fontSize: 32 }} />
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                  Invitaciones Pendientes ({invitations.length})
+                </Typography>
+              </Box>
+              {invitations.map((invitation, index) => (
+                <InvitationCard key={invitation.id} invitation={invitation} index={index} />
               ))}
             </Paper>
           )}
 
-          {/* Botón crear grupo */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h5">
-              Mis Grupos ({groups.length})
-            </Typography>
-            <Tooltip title="Crear nuevo grupo" arrow>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateDialog(true)}
+          {/* Sección de grupos */}
+          <Box 
+            sx={{ 
+              background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+              borderRadius: 3,
+              p: 4,
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`
+            }}
+          >
+            {/* Header de grupos */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+              <Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                  Mis Grupos ({groups.length})
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Organiza y gestiona tus gastos compartidos
+                </Typography>
+              </Box>
+              <Tooltip title="Crear nuevo grupo" arrow>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateDialog(true)}
+                  sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: 600,
+                    '&:hover': {
+                      background: `linear-gradient(135deg, ${theme.palette.success.dark} 0%, ${theme.palette.success.main} 100%)`,
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
+                  Crear Grupo
+                </Button>
+              </Tooltip>
+            </Box>
+
+            {/* Lista de grupos */}
+            <Grid container spacing={3}>
+              {groups.map((group, index) => (
+                <Grid item xs={12} sm={6} md={4} key={group.id}>
+                  <GroupCard group={group} index={index} />
+                </Grid>
+              ))}
+            </Grid>
+
+            {groups.length === 0 && !loading && (
+              <Paper 
+                sx={{ 
+                  p: 6, 
+                  textAlign: 'center',
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.grey[100], 0.5)} 0%, ${alpha(theme.palette.grey[50], 0.3)} 100%)`,
+                  border: `2px dashed ${alpha(theme.palette.divider, 0.3)}`
+                }}
               >
-                Crear Grupo
-              </Button>
-            </Tooltip>
+                <GroupIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 3, opacity: 0.5 }} />
+                <Typography variant="h5" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                  No tienes grupos aún
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                  Crea un grupo para comenzar a compartir gastos con otros
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setCreateDialog(true)}
+                  sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: 600
+                  }}
+                >
+                  Crear Primer Grupo
+                </Button>
+              </Paper>
+            )}
           </Box>
 
-          {/* Lista de grupos */}
-          <Grid container spacing={3}>
-            {groups.map((group) => (
-              <Grid item xs={12} sm={6} md={4} key={group.id}>
-                <GroupCard group={group} />
-              </Grid>
-            ))}
-          </Grid>
-
-          {groups.length === 0 && !loading && (
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No tienes grupos aún
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Crea un grupo para comenzar a compartir gastos con otros
-              </Typography>
-            </Paper>
-          )}
-
           {/* Dialog crear grupo mejorado */}
-          <Dialog open={createDialog} onClose={() => setCreateDialog(false)} maxWidth="sm" fullWidth>
+          <Dialog 
+            open={createDialog} 
+            onClose={() => setCreateDialog(false)} 
+            maxWidth="sm" 
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.9)} 100%)`
+              }
+            }}
+          >
             <DialogTitle>
-              <Box display="flex" alignItems="center" gap={1}>
-                <CreateIcon color="primary" />
-                Crear Nuevo Grupo
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                  <CreateIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Crear Nuevo Grupo
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Organiza gastos compartidos
+                  </Typography>
+                </Box>
               </Box>
             </DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <DialogContent sx={{ pt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Crea un grupo para compartir gastos con familiares, amigos o compañeros.
               </Typography>
               
@@ -502,13 +719,23 @@ function Groups() {
                 </Alert>
               )}
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setCreateDialog(false)}>Cancelar</Button>
+            <DialogActions sx={{ p: 3 }}>
+              <Button 
+                onClick={() => setCreateDialog(false)}
+                sx={{ px: 3 }}
+              >
+                Cancelar
+              </Button>
               <Button 
                 onClick={handleCreateGroup} 
                 variant="contained"
                 disabled={!isGroupFormValid() || createLoading}
                 startIcon={createLoading ? <CreateIcon /> : <CreateIcon />}
+                sx={{
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                  px: 3,
+                  fontWeight: 600
+                }}
               >
                 {createLoading ? 'Creando...' : 'Crear Grupo'}
               </Button>
@@ -516,15 +743,35 @@ function Groups() {
           </Dialog>
 
           {/* Dialog invitar a grupo mejorado */}
-          <Dialog open={inviteDialog.open} onClose={() => setInviteDialog({ open: false, groupId: null })} maxWidth="sm" fullWidth>
+          <Dialog 
+            open={inviteDialog.open} 
+            onClose={() => setInviteDialog({ open: false, groupId: null })} 
+            maxWidth="sm" 
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.9)} 100%)`
+              }
+            }}
+          >
             <DialogTitle>
-              <Box display="flex" alignItems="center" gap={1}>
-                <SendIcon color="primary" />
-                Invitar a Grupo
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar sx={{ bgcolor: theme.palette.secondary.main }}>
+                  <SendIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Invitar a Grupo
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Comparte con otros
+                  </Typography>
+                </Box>
               </Box>
             </DialogTitle>
-            <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            <DialogContent sx={{ pt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Invita a alguien a unirse a tu grupo de gastos compartidos.
               </Typography>
               
@@ -556,15 +803,126 @@ function Groups() {
                 </Alert>
               )}
             </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setInviteDialog({ open: false, groupId: null })}>Cancelar</Button>
+            <DialogActions sx={{ p: 3 }}>
+              <Button 
+                onClick={() => setInviteDialog({ open: false, groupId: null })}
+                sx={{ px: 3 }}
+              >
+                Cancelar
+              </Button>
               <Button 
                 onClick={handleInviteToGroup} 
                 variant="contained"
                 disabled={!isInviteFormValid() || inviteLoading}
                 startIcon={inviteLoading ? <SendIcon /> : <SendIcon />}
+                sx={{
+                  background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                  px: 3,
+                  fontWeight: 600
+                }}
               >
                 {inviteLoading ? 'Enviando...' : 'Enviar Invitación'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Dialog detalles del grupo mejorado */}
+          <Dialog 
+            open={!!groupDetails} 
+            onClose={() => setGroupDetails(null)} 
+            maxWidth="md" 
+            fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 3,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.95)} 0%, ${alpha(theme.palette.background.default, 0.9)} 100%)`
+              }
+            }}
+          >
+            <DialogTitle>
+              <Box display="flex" alignItems="center" gap={2}>
+                <Avatar sx={{ bgcolor: theme.palette.info.main }}>
+                  <GroupIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    Detalles del Grupo: {groupDetails?.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Información completa del grupo
+                  </Typography>
+                </Box>
+              </Box>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 2 }}>
+              {groupDetails && (
+                <Box>
+                  <Paper sx={{ p: 3, mb: 3, bgcolor: alpha(theme.palette.info.main, 0.05) }}>
+                    <Typography variant="body1" sx={{ mb: 2 }}>
+                      <strong>Descripción:</strong> {groupDetails.description || 'Sin descripción'}
+                    </Typography>
+                  </Paper>
+                  
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Miembros del Grupo ({groupDetails.members?.length || 0})
+                  </Typography>
+                  
+                  <TableContainer component={Paper} sx={{ mb: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
+                          <TableCell><strong>Email</strong></TableCell>
+                          <TableCell><strong>Rol</strong></TableCell>
+                          <TableCell><strong>Fecha de Unión</strong></TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {groupDetails.members?.map((member) => (
+                          <TableRow key={member.id} hover>
+                            <TableCell>{member.email}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={member.role === 'owner' ? 'Propietario' : member.role === 'admin' ? 'Administrador' : 'Miembro'} 
+                                color={member.role === 'owner' ? 'warning' : member.role === 'admin' ? 'primary' : 'default'}
+                                size="small"
+                                sx={{ fontWeight: 600 }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                {new Date(member.joined_at).toLocaleDateString('es-AR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  
+                  <Box sx={{ p: 2, bgcolor: alpha(theme.palette.grey[100], 0.5), borderRadius: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Creado por:</strong> {groupDetails.creator_email}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Fecha de creación:</strong> {new Date(groupDetails.created_at).toLocaleDateString('es-AR')}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+            </DialogContent>
+            <DialogActions sx={{ p: 3 }}>
+              <Button 
+                onClick={() => setGroupDetails(null)}
+                sx={{ px: 3 }}
+              >
+                Cerrar
               </Button>
             </DialogActions>
           </Dialog>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Container, Typography, Grid, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Card, CardContent, Alert, LinearProgress, Divider, TextField, IconButton, Tooltip, Fade, Zoom, Slide, InputAdornment, Fab
+  Container, Typography, Grid, Paper, Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Card, CardContent, Alert, LinearProgress, Divider, TextField, IconButton, Tooltip, Fade, Zoom, Slide, InputAdornment, Fab, Chip, List, ListItem, ListItemText, ListItemSecondaryAction, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import { styled, createTheme, ThemeProvider } from '@mui/material/styles';
 import {
@@ -16,7 +16,11 @@ import {
   AccountBalance as AccountBalanceIcon,
   Speed as SpeedIcon,
   Assessment as AssessmentIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Category as CategoryIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { 
   LineChart, 
@@ -35,6 +39,7 @@ import {
 import ExpenseForm from '../components/ExpenseForm';
 import ExpenseTable from '../components/ExpenseTable';
 import { fetchExpenses, addExpense, deleteExpense, updateExpense } from '../services/expenses';
+import { getBudgets, createBudget, updateBudget, deleteBudget, getBudgetDetails } from '../services/budgets';
 import { useSnackbar } from '../context/SnackbarContext';
 import { SectionLoading, ContentSkeleton, ActionLoading } from '../components/LoadingSpinner';
 import RecurringExpensesDashboard from '../components/RecurringExpensesDashboard';
@@ -150,20 +155,32 @@ function Dashboard() {
   const [darkMode, setDarkMode] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [recurringExpenses, setRecurringExpenses] = useState([]);
+  const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [budgetsLoading, setBudgetsLoading] = useState(false);
   const [addDialog, setAddDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [expenseEdit, setExpenseEdit] = useState(null);
   const [budgetDialog, setBudgetDialog] = useState(false);
+  const [budgetCreateDialog, setBudgetCreateDialog] = useState(false);
+  const [budgetEditDialog, setBudgetEditDialog] = useState(false);
+  const [budgetEdit, setBudgetEdit] = useState(null);
   const [budget, setBudget] = useState(() => {
     const saved = localStorage.getItem('userBudget');
     return saved ? parseFloat(saved) : 0;
+  });
+  const [newBudget, setNewBudget] = useState({
+    name: '',
+    amount: '',
+    period: 'monthly',
+    categories: []
   });
   const { showSuccess, showError } = useSnackbar();
 
   useEffect(() => {
     loadExpenses();
     loadRecurringExpenses();
+    loadBudgets();
   }, []);
 
   useEffect(() => {
@@ -187,6 +204,62 @@ function Dashboard() {
       setRecurringExpenses(data);
     } catch (error) {
       showError('Error al cargar gastos recurrentes');
+    }
+  };
+
+  const loadBudgets = async () => {
+    try {
+      setBudgetsLoading(true);
+      const data = await getBudgets();
+      setBudgets(data);
+    } catch (error) {
+      showError('Error al cargar presupuestos');
+    } finally {
+      setBudgetsLoading(false);
+    }
+  };
+
+  const handleCreateBudget = async () => {
+    try {
+      const budgetData = {
+        ...newBudget,
+        amount: parseFloat(newBudget.amount)
+      };
+      const newBudgetCreated = await createBudget(budgetData);
+      setBudgets([...budgets, newBudgetCreated]);
+      setBudgetCreateDialog(false);
+      setNewBudget({ name: '', amount: '', period: 'monthly', categories: [] });
+      showSuccess('Presupuesto creado exitosamente');
+    } catch (error) {
+      showError('Error al crear presupuesto');
+    }
+  };
+
+  const handleEditBudget = (budget) => {
+    setBudgetEdit(budget);
+    setBudgetEditDialog(true);
+  };
+
+  const handleUpdateBudget = async () => {
+    try {
+      const updatedBudget = await updateBudget(budgetEdit.id, budgetEdit);
+      setBudgets(budgets.map(b => b.id === budgetEdit.id ? updatedBudget : b));
+      setBudgetEditDialog(false);
+      setBudgetEdit(null);
+      showSuccess('Presupuesto actualizado exitosamente');
+    } catch (error) {
+      showError('Error al actualizar presupuesto');
+    }
+  };
+
+  const handleDeleteBudget = async (budget) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este presupuesto?')) return;
+    try {
+      await deleteBudget(budget.id);
+      setBudgets(budgets.filter(b => b.id !== budget.id));
+      showSuccess('Presupuesto eliminado exitosamente');
+    } catch (error) {
+      showError('Error al eliminar presupuesto');
     }
   };
 
@@ -407,7 +480,146 @@ function Dashboard() {
 
           <Divider sx={{ mb: 4 }} />
 
-          {/* 4. Gráficos */}
+          {/* 4. Gestión de Presupuestos */}
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 3, boxShadow: 1 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6">Gestión de Presupuestos</Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setBudgetCreateDialog(true)}
+                color="primary"
+              >
+                Nuevo Presupuesto
+              </Button>
+            </Box>
+
+            {budgetsLoading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <ActionLoading />
+              </Box>
+            ) : budgets.length === 0 ? (
+              <Alert severity="info">
+                No tienes presupuestos configurados. Crea tu primer presupuesto para comenzar a hacer seguimiento.
+              </Alert>
+            ) : (
+              <Grid container spacing={3}>
+                {budgets.map((budget) => {
+                  // Calcular gastos del presupuesto para el período actual
+                  const currentDate = new Date();
+                  const budgetStartDate = new Date(budget.start_date);
+                  const budgetEndDate = new Date(budget.end_date);
+                  
+                  const isActive = currentDate >= budgetStartDate && currentDate <= budgetEndDate;
+                  const budgetExpenses = expenses.filter(expense => {
+                    const expenseDate = new Date(expense.fecha);
+                    return expenseDate >= budgetStartDate && expenseDate <= budgetEndDate;
+                  });
+                  
+                  const totalSpent = budgetExpenses.reduce((sum, expense) => sum + Number(expense.monto), 0);
+                  const remaining = budget.amount - totalSpent;
+                  const usagePercentage = (totalSpent / budget.amount) * 100;
+
+                  return (
+                    <Grid item xs={12} md={6} lg={4} key={budget.id}>
+                      <Card sx={{ 
+                        boxShadow: 2, 
+                        borderRadius: 3, 
+                        p: 2,
+                        border: isActive ? '2px solid #43a047' : '2px solid transparent'
+                      }}>
+                        <CardContent>
+                          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                            <Box>
+                              <Typography variant="h6" fontWeight={600} gutterBottom>
+                                {budget.name}
+                              </Typography>
+                              <Chip 
+                                label={budget.period} 
+                                size="small" 
+                                color={isActive ? "success" : "default"}
+                                sx={{ mb: 1 }}
+                              />
+                            </Box>
+                            <Box>
+                              <IconButton 
+                                size="small" 
+                                onClick={() => handleEditBudget(budget)}
+                                sx={{ mr: 1 }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={() => handleDeleteBudget(budget)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </Box>
+
+                          <Typography variant="h5" color="primary" gutterBottom>
+                            ${budget.amount.toFixed(2)}
+                          </Typography>
+
+                          <Box sx={{ mb: 2 }}>
+                            <Box display="flex" justifyContent="space-between" mb={1}>
+                              <Typography variant="body2" color="text.secondary">
+                                Gastado: ${totalSpent.toFixed(2)}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {usagePercentage.toFixed(1)}%
+                              </Typography>
+                            </Box>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={Math.min(usagePercentage, 100)}
+                              color={usagePercentage >= 90 ? 'error' : usagePercentage >= 75 ? 'warning' : 'primary'}
+                              sx={{ height: 6, borderRadius: 3 }}
+                            />
+                          </Box>
+
+                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="body2" color="text.secondary">
+                              Restante: ${remaining.toFixed(2)}
+                            </Typography>
+                            {usagePercentage >= 90 && (
+                              <Alert severity="error" sx={{ py: 0, px: 1 }}>
+                                ¡Límite alcanzado!
+                              </Alert>
+                            )}
+                          </Box>
+
+                          {budget.categories && budget.categories.length > 0 && (
+                            <Box mt={2}>
+                              <Typography variant="body2" color="text.secondary" gutterBottom>
+                                Categorías:
+                              </Typography>
+                              <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                {budget.categories.map((category, index) => (
+                                  <Chip 
+                                    key={index} 
+                                    label={category} 
+                                    size="small" 
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+          </Paper>
+
+          <Divider sx={{ mb: 4 }} />
+
+          {/* 5. Gráficos */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3, height: 400, borderRadius: 3, boxShadow: 1 }}>
@@ -519,7 +731,7 @@ function Dashboard() {
 
           <Divider sx={{ mb: 4 }} />
 
-          {/* 5. Tabla de gastos recientes */}
+          {/* 6. Tabla de gastos recientes */}
           <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 1 }}>
             <Typography variant="h6" gutterBottom>Gastos Recientes</Typography>
             <ExpenseTable 
@@ -529,7 +741,7 @@ function Dashboard() {
             />
           </Paper>
 
-          {/* 6. Botón flotante para agregar gasto */}
+          {/* 7. Botón flotante para agregar gasto */}
           <Fab 
             color="primary" 
             aria-label="add" 
@@ -565,7 +777,7 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          {/* Dialog configurar presupuesto */}
+          {/* Dialog configurar presupuesto básico */}
           <Dialog open={budgetDialog} onClose={() => setBudgetDialog(false)} maxWidth="sm" fullWidth>
             <DialogTitle>
               <Box display="flex" alignItems="center" gap={1}>
@@ -606,6 +818,172 @@ function Dashboard() {
                 color="primary"
               >
                 Guardar Presupuesto
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Dialog crear nuevo presupuesto */}
+          <Dialog open={budgetCreateDialog} onClose={() => setBudgetCreateDialog(false)} maxWidth="md" fullWidth>
+            <DialogTitle>
+              <Box display="flex" alignItems="center" gap={1}>
+                <AccountBalanceIcon color="primary" />
+                Crear Nuevo Presupuesto
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Nombre del presupuesto"
+                    fullWidth
+                    value={newBudget.name}
+                    onChange={(e) => setNewBudget({ ...newBudget, name: e.target.value })}
+                    placeholder="Ej: Presupuesto de comida"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Monto"
+                    type="number"
+                    fullWidth
+                    value={newBudget.amount}
+                    onChange={(e) => setNewBudget({ ...newBudget, amount: e.target.value })}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MoneyIcon color="action" />
+                        </InputAdornment>
+                      ),
+                      inputProps: { 
+                        min: 0,
+                        step: 100,
+                        placeholder: '0.00'
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Período</InputLabel>
+                    <Select
+                      value={newBudget.period}
+                      onChange={(e) => setNewBudget({ ...newBudget, period: e.target.value })}
+                      label="Período"
+                    >
+                      <MenuItem value="weekly">Semanal</MenuItem>
+                      <MenuItem value="monthly">Mensual</MenuItem>
+                      <MenuItem value="quarterly">Trimestral</MenuItem>
+                      <MenuItem value="yearly">Anual</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Categorías (separadas por comas)"
+                    fullWidth
+                    value={newBudget.categories.join(', ')}
+                    onChange={(e) => setNewBudget({ 
+                      ...newBudget, 
+                      categories: e.target.value.split(',').map(cat => cat.trim()).filter(cat => cat)
+                    })}
+                    placeholder="Ej: Comida, Transporte, Entretenimiento"
+                    helperText="Opcional: especifica categorías para este presupuesto"
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setBudgetCreateDialog(false)}>Cancelar</Button>
+              <Button 
+                onClick={handleCreateBudget}
+                variant="contained"
+                color="primary"
+                disabled={!newBudget.name || !newBudget.amount}
+              >
+                Crear Presupuesto
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Dialog editar presupuesto */}
+          <Dialog open={budgetEditDialog} onClose={() => setBudgetEditDialog(false)} maxWidth="md" fullWidth>
+            <DialogTitle>
+              <Box display="flex" alignItems="center" gap={1}>
+                <EditIcon color="primary" />
+                Editar Presupuesto
+              </Box>
+            </DialogTitle>
+            <DialogContent>
+              {budgetEdit && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Nombre del presupuesto"
+                      fullWidth
+                      value={budgetEdit.name}
+                      onChange={(e) => setBudgetEdit({ ...budgetEdit, name: e.target.value })}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Monto"
+                      type="number"
+                      fullWidth
+                      value={budgetEdit.amount}
+                      onChange={(e) => setBudgetEdit({ ...budgetEdit, amount: parseFloat(e.target.value) || 0 })}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <MoneyIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        inputProps: { 
+                          min: 0,
+                          step: 100
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Período</InputLabel>
+                      <Select
+                        value={budgetEdit.period}
+                        onChange={(e) => setBudgetEdit({ ...budgetEdit, period: e.target.value })}
+                        label="Período"
+                      >
+                        <MenuItem value="weekly">Semanal</MenuItem>
+                        <MenuItem value="monthly">Mensual</MenuItem>
+                        <MenuItem value="quarterly">Trimestral</MenuItem>
+                        <MenuItem value="yearly">Anual</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Categorías (separadas por comas)"
+                      fullWidth
+                      value={budgetEdit.categories ? budgetEdit.categories.join(', ') : ''}
+                      onChange={(e) => setBudgetEdit({ 
+                        ...budgetEdit, 
+                        categories: e.target.value.split(',').map(cat => cat.trim()).filter(cat => cat)
+                      })}
+                      placeholder="Ej: Comida, Transporte, Entretenimiento"
+                      helperText="Opcional: especifica categorías para este presupuesto"
+                    />
+                  </Grid>
+                </Grid>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setBudgetEditDialog(false)}>Cancelar</Button>
+              <Button 
+                onClick={handleUpdateBudget}
+                variant="contained"
+                color="primary"
+                disabled={!budgetEdit?.name || !budgetEdit?.amount}
+              >
+                Actualizar Presupuesto
               </Button>
             </DialogActions>
           </Dialog>

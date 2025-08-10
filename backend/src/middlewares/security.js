@@ -113,6 +113,33 @@ export const validateGroupInput = [
     .withMessage('La descripción debe tener máximo 500 caracteres'),
 ];
 
+// Validación de inputs para presupuestos
+export const validateBudgetInput = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .matches(/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s-]+$/)
+    .withMessage('El nombre del presupuesto debe tener entre 2 y 100 caracteres'),
+  body('amount')
+    .isFloat({ min: 0.01, max: 999999.99 })
+    .withMessage('El monto debe ser un número válido entre 0.01 y 999999.99'),
+  body('period')
+    .optional()
+    .isIn(['daily', 'weekly', 'monthly', 'yearly'])
+    .withMessage('El período debe ser daily, weekly, monthly o yearly'),
+  body('start_date')
+    .isISO8601()
+    .withMessage('Fecha de inicio inválida'),
+  body('end_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Fecha de fin inválida'),
+  body('categories')
+    .optional()
+    .isArray()
+    .withMessage('Las categorías deben ser un array'),
+];
+
 // Middleware para manejar errores de validación
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
